@@ -1,0 +1,8 @@
+{
+  "name": "RechargeMe - Cabine de Rechargement",
+  "description": "Cabine de rechargement en ligne en Côte d'Ivoire. Achetez des unités, forfaits internet et pass appels pour Orange, MTN et Moov via Wave et Mobile Money.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

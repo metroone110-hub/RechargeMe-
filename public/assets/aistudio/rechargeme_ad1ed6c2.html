@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RechargeMe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--fg:#000;--mut:#6b6b6b;--line:#e6e6e6;--soft:#f4f4f6;--acc:#3445ff;--accs:#eceeff;--onacc:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--mut:#9b9b9b;--line:#262626;--soft:#131316;--acc:#7b88ff;--accs:#171a45;--onacc:#000;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--mut:#9b9b9b;--line:#262626;--soft:#131316;--acc:#7b88ff;--accs:#171a45;--onacc:#000;color-scheme:dark}
+*{box-sizing:border-box;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--fg);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}button{cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+svg{display:block}
+.app{max-width:520px;margin:0 auto;min-height:100vh;padding:18px 20px calc(100px + env(safe-area-inset-bottom,0px))}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.logo{font-weight:800;font-size:22px;letter-spacing:-.04em;display:flex;align-items:center;gap:7px}
+.logo i{width:.6em;height:.6em;background:var(--acc);border-radius:50%;box-shadow:0 0 0 0 var(--acc);animation:pulse 2.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 55%,transparent)}70%,100%{box-shadow:0 0 0 10px transparent}}
+.tools{display:flex;gap:6px;align-items:center}
+.ib{width:40px;height:40px;border-radius:50%;background:var(--soft);display:grid;place-items:center;transition:transform .15s}
+.ib:active{transform:scale(.9)}
+.link{color:var(--mut);font-weight:600;font-size:14px;padding:6px 4px}.link:hover{color:var(--fg)}
+h1{font-size:30px;letter-spacing:-.04em;line-height:1.12;font-weight:800;margin-bottom:6px}
+h2{font-size:18px;letter-spacing:-.02em;font-weight:700}
+.sub{color:var(--mut);margin-bottom:22px}
+.view{animation:in .38s cubic-bezier(.2,.8,.2,1)}
+@keyframes in{from{opacity:0;transform:translateY(14px)}}
+.hero{position:relative;overflow:hidden;background:#000;color:#fff;border-radius:30px;padding:24px;margin-bottom:22px;isolation:isolate}
+:root[data-theme="dark"] .hero,:root:not([data-theme="light"]) .hero{outline:1px solid var(--line)}
+.hero::before,.hero::after{content:"";position:absolute;z-index:-1;border-radius:50%;filter:blur(38px);opacity:.75}
+.hero::before{width:220px;height:220px;right:-60px;top:-70px;background:var(--acc);animation:drift 9s ease-in-out infinite alternate}
+.hero::after{width:150px;height:150px;left:-40px;bottom:-60px;background:#ffcc00;opacity:.28;animation:drift 11s ease-in-out infinite alternate-reverse}
+@keyframes drift{to{transform:translate(-40px,30px) scale(1.2)}}
+.hero .lbl{opacity:.7;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.eye{color:#fff;opacity:.8;font-size:13px;font-weight:600;background:rgba(255,255,255,.14);border-radius:99px;padding:4px 12px}
+.bal{font-size:clamp(48px,15vw,68px);font-weight:800;letter-spacing:-.06em;line-height:1;margin:16px 0 22px;font-variant-numeric:tabular-nums}
+.bal small{font-size:.36em;letter-spacing:-.02em;margin-left:6px;opacity:.7}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.acts button{background:#fff;color:#000;border-radius:18px;padding:12px 6px 11px;font-weight:700;font-size:13px;display:grid;justify-items:center;gap:4px;transition:transform .15s}
+.acts button:active{transform:scale(.94)}
+.card{background:var(--soft);border-radius:24px;padding:18px;margin-bottom:22px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:112px;margin-top:16px}
+.bar{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%;font-size:12px;color:var(--mut);font-weight:600}
+.bar i{width:100%;max-width:30px;border-radius:9px 9px 5px 5px;background:var(--acc);height:0;min-height:5px;opacity:.9;animation:grow .9s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--n)*70ms)}
+.bar.z i{background:var(--line);opacity:1}
+@keyframes grow{to{height:var(--h)}}
+.list{margin-top:6px}
+.tx{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
+.tx .l{display:flex;gap:12px;align-items:center}
+.dot{width:40px;height:40px;border-radius:14px;background:var(--soft);display:grid;place-items:center;flex:none}
+.dot.in{background:var(--accs);color:var(--acc)}
+.tx b{font-weight:700;display:block;line-height:1.3}.tx span{color:var(--mut);font-size:13px}
+.tx .amt{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.tx .amt.in{color:var(--acc)}
+.empty{color:var(--mut);padding:24px 0;text-align:center}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--soft);border-radius:18px;padding:4px;margin-bottom:6px}
+.seg button{padding:11px 4px;border-radius:14px;font-weight:700;font-size:14px;color:var(--mut);transition:all .25s}
+.seg button.on{background:var(--fg);color:var(--bg)}
+label{display:block;font-weight:600;font-size:14px;margin:20px 0 8px}
+.fld{position:relative}
+input{width:100%;background:var(--soft);border:2px solid transparent;border-radius:18px;padding:15px 16px;font-size:17px;font-weight:600;transition:border-color .2s,background .2s}
+input:focus{outline:0;border-color:var(--acc)}
+.fld .op{position:absolute;right:12px;top:50%;transform:translateY(-50%)}
+.op{font-size:12px;font-weight:800;padding:4px 11px;border-radius:99px;animation:pop .3s}
+@keyframes pop{from{transform:translateY(-50%) scale(.6);opacity:0}}
+.op.Orange{background:#ff7900;color:#fff}.op.MTN{background:#ffcc00;color:#000}.op.Moov{background:#0b63ce;color:#fff}
+.hint{color:var(--mut);font-size:14px;margin-top:8px;min-height:21px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--line);border-radius:999px;padding:8px 15px;font-weight:700;font-size:14px;transition:all .18s}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chip:active{transform:scale(.94)}
+.plan{width:100%;text-align:left;display:flex;align-items:center;gap:14px;border:2px solid var(--line);border-radius:20px;padding:13px 14px;margin-bottom:10px;transition:border-color .18s,transform .15s,background .18s;animation:in .4s both;animation-delay:calc(var(--n)*28ms)}
+.plan:active{transform:scale(.985)}
+.plan.on{border-color:var(--acc);background:var(--accs)}
+.plan .ic{width:44px;height:44px;border-radius:15px;background:var(--soft);display:grid;place-items:center;flex:none;color:var(--acc)}
+.plan.on .ic{background:var(--acc);color:var(--onacc)}
+.plan b{display:block;font-size:16px;line-height:1.3}
+.plan .v{display:inline-block;margin-top:3px;font-size:12px;font-weight:700;color:var(--mut);background:var(--soft);padding:2px 10px;border-radius:99px}
+.plan.on .v{background:var(--bg)}
+.plan .p{margin-left:auto;text-align:right;font-weight:800;font-size:19px;letter-spacing:-.03em;white-space:nowrap}
+.plan .p small{display:block;font-size:11px;font-weight:600;color:var(--mut);letter-spacing:0}
+.cta{width:100%;background:var(--fg);color:var(--bg);border-radius:20px;padding:17px;font-weight:800;font-size:17px;transition:transform .15s,opacity .2s}
+.cta.acc{background:var(--acc);color:var(--onacc)}
+.cta:active{transform:scale(.98)}.cta[disabled]{opacity:.22;cursor:not-allowed}
+.sticky{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));padding-top:14px;margin-top:6px;background:linear-gradient(transparent,var(--bg) 30%)}
+.ghost{width:100%;border:2px solid var(--line);border-radius:20px;padding:15px;font-weight:700;margin-top:10px}
+.nav{position:fixed;left:0;right:0;bottom:0;padding:0 14px calc(10px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.nav div{max-width:492px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);background:var(--fg);border-radius:26px;padding:6px;pointer-events:auto;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.nav button{padding:9px 0 7px;font-size:11px;font-weight:700;color:var(--bg);opacity:.55;display:grid;justify-items:center;gap:2px;border-radius:20px;transition:all .25s}
+.nav button.on{opacity:1;background:color-mix(in srgb,var(--bg) 18%,transparent)}
+.sum{background:var(--soft);border-radius:20px;padding:12px 18px;margin:12px 0 18px}
+.sum .row{padding:7px 0}.sum .row span{color:var(--mut)}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat div{background:var(--soft);border-radius:20px;padding:16px}
+.stat span{color:var(--mut);font-size:14px;display:block}.stat b{font-size:22px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s;backdrop-filter:blur(3px)}
+.sheet{background:var(--bg);width:100%;max-width:520px;border-radius:30px 30px 0 0;padding:14px 22px calc(26px + env(safe-area-inset-bottom,0px));animation:up .32s cubic-bezier(.2,.8,.2,1)}
+.sheet:before{content:"";display:block;width:40px;height:4px;border-radius:9px;background:var(--line);margin:0 auto 18px}
+@keyframes fade{from{opacity:0}}@keyframes up{from{transform:translateY(60px);opacity:0}}
+.ok{width:76px;height:76px;margin:6px auto 14px}
+.ok circle{fill:var(--acc);transform-origin:center;animation:pop2 .45s cubic-bezier(.2,1.4,.4,1)}
+.ok path{fill:none;stroke:var(--onacc);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:50;stroke-dashoffset:50;animation:dash .5s .3s forwards}
+@keyframes pop2{from{transform:scale(0)}}@keyframes dash{to{stroke-dashoffset:0}}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:13px 20px;border-radius:999px;font-weight:700;z-index:30;max-width:90vw;animation:drop .3s}
+@keyframes drop{from{transform:translate(-50%,-30px);opacity:0}}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:r .7s linear infinite;vertical-align:-3px}@keyframes r{to{transform:rotate(360deg)}}
+.login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;max-width:420px;margin:0 auto;padding:24px;position:relative}
+.login .logo{font-size:30px;margin-bottom:26px}
+.float{display:flex;gap:8px;margin-bottom:22px}
+.float .op{font-size:14px;padding:7px 15px;animation:bob 3s ease-in-out infinite alternate}
+.float .op:nth-child(2){animation-delay:-1s}.float .op:nth-child(3){animation-delay:-2s}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.sheet{max-height:92vh;overflow:auto}
+.pay{display:grid;gap:8px;margin:0 0 6px}
+.po{display:flex;align-items:center;justify-content:space-between;gap:10px;border:2px solid var(--line);border-radius:16px;padding:12px 14px;font-weight:700;width:100%;text-align:left;transition:all .18s}
+.po.on{border-color:var(--acc);background:var(--accs)}.po[disabled]{opacity:.4}.po small{color:var(--mut);font-weight:600}
+.pl{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:10px}
+.hs{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:10px -20px 24px;padding:0 20px 6px;scrollbar-width:none}.hs::-webkit-scrollbar{display:none}
+.of{flex:none;width:190px;scroll-snap-align:start;border-radius:24px;padding:16px;background:var(--soft);text-align:left;display:grid;gap:6px;transition:transform .15s}
+.of:active{transform:scale(.97)}.of .big{font-size:28px;font-weight:800;letter-spacing:-.05em}.of span{color:var(--mut);font-size:13px;font-weight:600}.of b{font-size:14px;line-height:1.3}
+.land{max-width:520px;margin:0 auto;padding:10px 24px 60px}
+.lh{margin:44px 0 16px;font-size:24px;letter-spacing:-.04em}
+.st{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.st>b{flex:none;width:36px;height:36px;border-radius:50%;background:var(--acc);color:var(--onacc);display:grid;place-items:center}
+.st h3{font-size:17px}.st p,.adv p{color:var(--mut)}
+.ops{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.oc{background:var(--soft);border-radius:22px;padding:16px 10px;text-align:center;display:grid;justify-items:center;gap:6px}
+.oc b{font-size:30px;letter-spacing:-.05em;line-height:1}.oc small{color:var(--mut)}
+.adv{display:grid;gap:10px}.adv div{background:var(--soft);border-radius:22px;padding:18px}.adv h3{font-size:17px;margin-bottom:2px}
+details{border-bottom:1px solid var(--line);padding:15px 0}
+summary{font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::-webkit-details-marker{display:none}summary::after{content:"+";font-size:22px;line-height:1;color:var(--acc)}
+details[open] summary::after{content:"−"}details p{color:var(--mut);margin-top:8px}
+.foot{color:var(--mut);text-align:center;margin-top:44px;font-size:14px}
+a.cta{display:block;text-align:center;text-decoration:none}
+.lg{width:38px;height:38px;border-radius:12px;margin-right:12px;flex:none;object-fit:cover;display:block;box-shadow:0 0 0 1px rgba(128,128,128,.28)}
+.po span{display:flex;align-items:center}
+.chip{display:inline-flex;align-items:center}.chip .lg{width:22px;height:22px;border-radius:7px;margin-right:8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.bar i{height:var(--h)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>(function(){
+/* ===== COUCHE API : branchez ici vos vraies API (retour {ok:true, ref} ou {ok:false, error}) ===== */
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const API = {
+  async login(phone){ await wait(500); return {ok:true}; },                       // TODO auth (OTP / PIN)
+  async topUp({provider, phone, amount}){ await wait(1200); return {ok:true, ref:"TP"+Date.now()}; },  // TODO paiement mobile
+  async buyAirtime({operator, phone, amount}){ await wait(1200); return {ok:true, ref:"UN"+Date.now()}; }, // TODO recharge unités
+  async plans(operator, kind){ await wait(120); return mk(operator, kind); },     // TODO catalogue (ou garder CATALOG)
+  async buyPlan({operator, phone, plan}){ await wait(1200); return {ok:true, ref:"FP"+Date.now()}; },     // TODO achat forfait
+  async transfer({to, amount}){ await wait(1000); return {ok:true, ref:"TR"+Date.now()}; }                // TODO transfert
+};
+/* ===== CATALOGUE DES FORFAITS [nom, validité, prix] ===== */
+const CATALOG = {
+  MTN:{
+    internet:[["Internet 2 Jours","2 jours",200],["Pass c’chic 650 Mo","1 jour",200],["Internet 3 Jours","3 jours",300],["Pass c’chic 900 Mo","1 jour",300],["Internet 3 Jours+","3 jours",500],["Pass c’chic 1,5 Go","3 jours",500],["Pass c’chic 1,5 Go + 60 min","7 jours",700],["Internet Week","7 jours",1000],["Pass c’chic 5 Go","7 jours",1500],["Internet Mois","30 jours",2500],["Pass c’chic 7,5 Go","10 jours",2500],["Internet Mois Medium","30 jours",5000],["Pass c’chic 15 Go","21 jours",5000],["Internet Mois Max","30 jours",10000]],
+    appels:[["Appels Day+","1 jour",200],["Appels 15 min","1 jour",200],["Pass c’chic 20 min","2 jours",200],["Appels 3 Jours","3 jours",300],["Appels 27 min + Internet 50 Mo","3 jours",300],["Pass c’chic 35 min","3 jours",300],["Appels Week","7 jours",500],["Pass c’chic 65 min","5 jours",500],["Pass c’chic 1,5 Go + 60 min","7 jours",700],["Appels 10 Jours","10 jours",1000],["Pass c’chic 140 min","10 jours",1000],["Pass c’chic 140 min","10 jours",1000],["Pass c’chic 210 min","15 jours",1500],["Pass c’chic 280 min","15 jours",2000],["Appels Mois","30 jours",2500],["Pass c’chic 400 min","30 jours",3000],["Pass c’chic 700 min","30 jours",5000],["Appels Premium","30 jours",10000],["Appels Max","30 jours",20000]]
+  },
+  Orange:{
+    internet:[["Internet 200 Mo","1 jour",200],["Pass nuit 2 Go illimité numéro préféré","22h-7h",250],["Internet 300 Mo","1 jour",300],["Appels 27 min + Internet 50 Mo","3 jours",300],["Internet 750 Mo","1 jour",500],["Pass 50 min TRS + 300 SMS + 250 Mo","7 jours",500],["Pass social","7 jours",500],["Pass spécial 1,5 Go","3 jours",500],["Pass spécial 750 Mo + vidéo cuisine","1 jour",700],["Internet 1,5 Go","3 jours",1000],["Pass 100 min + 1 Go + illimité + 150 Mo Spotify","7 jours",1000],["Internet 2,5 Go","7 jours",1500],["Pass 200 min TR + 1500 Mo + 300 SMS + illimité + 150 Mo Spotify","7 jours",1500],["Internet 2,5 Go","7 jours",1500],["Internet 3,5 Go","7 jours",2500],["Internet Pass Mix Mini","30 jours",3000],["Internet Pass Mix Medium","30 jours",5000],["Pass Data+ 30 jours","30 jours",5000],["Pass 250 min + 2,5 Go + 500 SMS + illimité + 500 Mo Spotify","1 mois",5000],["Internet Pass Mix Large","30 jours",10000],["Internet Pass Mix XL","30 jours",20000]],
+    appels:[["Appels 17 min + Internet 50 Mo","3 jours",200],["Appels 27 min + Internet 100 Mo","3 jours",300],["Appels 27 min + Internet 50 Mo","3 jours",300],["Pass 50 min TRS + 300 SMS + 250 Mo","7 jours",500],["Pass 100 min + 1 Go + illimité + 150 Mo Spotify","7 jours",1000],["Pass 100 min + 1 Go + illimité + 150 Mo Spotify","7 jours",1000],["Pass 200 min TR + 1500 Mo + 300 SMS + illimité + 150 Mo Spotify","7 jours",1500],["Pass 250 min + 2,5 Go + 500 SMS + illimité + 500 Mo Spotify","30 jours",5000],["Pass 250 min + 2,5 Go + 500 SMS + illimité + 500 Mo Spotify","1 mois",5000]]
+  },
+  Moov:{
+    internet:[["150 Mo - 2 jours","2 jours",150],["Internet 200 Mo","1 jour",200],["Réseaux sociaux - 500 Mo - 1 jour","1 jour",200],["220 Mo - 2 jours","2 jours",200],["Internet Moov Folie Day","1 jour",200],["Internet 500 Mo","1 jour",300],["TikTok - 1 Go - 3 jours","3 jours",300],["340 Mo - 3 jours","3 jours",300],["Internet illimité 1 heure","1 heure",300],["Données illimitées 1h","1 heure",300],["Internet Moov Folie 900Mo","1 jour",300],["Internet 1 Go","3 jours",500],["750 Mo - 3 jours","3 jours",500],["Internet illimité 2 heures","2 heures",500],["Données illimitées 2h","2 heures",500],["Internet Moov Folie 3 Jours","3 jours",500],["1024 Mo - 7 jours","7 jours",750],["Internet Moov Folie 2,5Go 5j","5 jours",750],["Moov Folie 2,5 Go (5j)","5 jours",750],["Internet 2 Go","7 jours",1000],["1,5 Go - 7 jours","7 jours",1000],["Internet Moov Folie 4Go","7 jours",1000],["Internet illimité 6 heures","6 heures",1300],["Données illimitées 6h","6 heures",1300],["Internet 3 Go","7 jours",1500],["2,5 Go - 10 jours","10 jours",1500],["Internet Moov Folie 6Go","10 jours",1500],["Internet 5 Go","10 jours",2000],["3 Go - 30 jours","30 jours",2000],["Internet Moov Folie 10Go 15j","15 jours",2500],["7,4 Go - 30 jours","30 jours",4900],["Internet 10 Go","30 jours",5000],["22 Go - 30 jours","30 jours",9900],["Internet 20 Go","30 jours",10000],["35 Go - 30 jours","30 jours",14900],["50 Go - 30 jours","30 jours",19900],["Internet 50 Go","30 jours",20000],["150 Go","30 jours",24000],["300 Go","30 jours",29000],["400 Go","30 jours",39000]],
+    appels:[["Appels 17 min + 25 Mo + 50 SMS","1 jour",200],["Moov Folie Appel+Internet 20 min + 150 Mo","1 jour",200],["Pass nuit 30 min TRS + 2 Go","22h-7h",200],["Nuit - 30 min + 2 Go (22h-7h)","22h-7h",200],["Appels 27 min + 100 SMS + 100 Mo + illimité vers 5 numéros préférés","3 jours",300],["Moov Folie Appel+Internet 35 min + 400 Mo","1 jour",300],["Appels 50 min + 250 SMS + 250 Mo + illimité vers 5 numéros préférés","7 jours",500],["Moov Folie Appel+Internet 60 min + 1 Go","2 jours",500],["Moov Folie Appel+Internet 1h + 1 Go","5 jours",700],["Appels 100 min + 500 SMS + 1024 Mo + illimité vers 5 numéros préférés","10 jours",1000],["Moov Folie Appel+Internet 120 min + 2,5 Go","5 jours",1000],["Appel + Internet 120 min + 2,5 Go","5 jours",1000],["Appels illimités vers 5 numéros préférés + 200 min + 500 SMS TR + 1536 Mo","15 jours",1500],["Appels illimités vers 5 numéros préférés + 250 min + 500 SMS TR + 2,5 Go","30 jours",2500],["Appels illimités vers 5 numéros préférés + 500 min + 500 SMS TR + 5 Go","30 jours",5000],["Appels illimités vers 5 numéros préférés + 830 min + 500 SMS TR + 10 Go","30 jours",10000],["Appels illimités vers 5 numéros préférés + 1660 min + 1000 SMS TR + 20 Go","30 jours",20000]]
+  }      // tarifs Moov (57 forfaits)
+};
+const mk = (op, kind) => ((CATALOG[op]||{})[kind]||[]).map((p,i)=>({id:op+kind+i, name:p[0], valid:p[1], days:/mois/.test(p[1])?30:/h/.test(p[1])?1:parseInt(p[1]), price:p[2], kind}));
+const PROVIDERS = ["Wave","MTN Money","Orange Money","Moov Money"];
+
+/* ===== OUTILS ===== */
+const store = {get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const $ = s => document.querySelector(s);
+const IC = {home:'<path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/>',buy:'<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',plus:'<path d="M12 5v14M5 12h14"/>',moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',data:'<path d="M5 12a10 10 0 0114 0M8.5 15.5a5 5 0 017 0M12 19h.01"/>',call:'<path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/>',down:'<path d="M12 5v14M6 13l6 6 6-6"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>'};
+const ic = (n,s=22) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[n]}</svg>`;
+const fmt = n => Math.abs(n).toLocaleString("fr-FR") + "\u00A0F";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const digits = s => (s||"").replace(/\D/g,"").slice(0,10);
+const pretty = p => p.replace(/(\d{2})(?=\d)/g,"$1 ").trim();
+function operator(p){ if(p.length<2) return null; const n=+p.slice(0,2); return n>=1&&n<=3?"Moov":n>=4&&n<=6?"MTN":n>=7&&n<=9?"Orange":null; }
+const validPhone = p => p.length===10 && !!operator(p);
+const toast = m => { const t=document.createElement("div"); t.className="toast"; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); };
+function countUp(el,to){ if(matchMedia("(prefers-reduced-motion:reduce)").matches){el.textContent=to.toLocaleString("fr-FR");return;} const t0=performance.now(); (function f(t){ const k=Math.min(1,(t-t0)/900), e=1-Math.pow(1-k,3); el.textContent=Math.round(to*e).toLocaleString("fr-FR"); if(k<1) requestAnimationFrame(f); })(t0); }
+
+/* ===== ÉTAT ===== */
+let S = store.get("rechargeme");
+let buy = {type:"airtime", phone:"", amount:0, plan:null, dur:"all"};
+let rch = {provider:PROVIDERS[0], amount:0};
+let xfer = {to:"", amount:0};
+let filter = "all";
+const save = () => store.set("rechargeme", S);
+function addTx(t){ S.tx.unshift({id:Date.now()+Math.random(), date:new Date().toISOString(), ...t}); save(); }
+const setTheme = t => { if(t) document.documentElement.dataset.theme = t; };
+setTheme(store.get("rm_theme"));
+
+/* ===== VUES ===== */
+const root = $("#root");
+const views = {accueil, acheter, transferer, historique, recharger, compte};
+function route(){
+  if(!S) return renderLogin();
+  const name = (location.hash.slice(1) in views) ? location.hash.slice(1) : "accueil";
+  root.innerHTML = `<div class="app"><div class="top"><div class="logo">RechargeMe<i></i></div>
+    <div class="tools"><button class="ib" id="th" aria-label="Changer le thème">${ic("moon",18)}</button><button class="link" id="out">Déconnexion</button></div></div>
+    <main id="view" class="view"></main></div>
+    <nav class="nav"><div>${[["accueil","home","Accueil"],["acheter","buy","Acheter"],["transferer","send","Envoyer"],["historique","hist","Historique"],["compte","user","Compte"]]
+      .map(([k,i,l]) => `<button data-go="${k}" class="${(name===k||(name==="recharger"&&k==="accueil"))?"on":""}">${ic(i,20)}${l}</button>`).join("")}</div></nav>`;
+  $("#out").onclick = () => { S=null; store.set("rechargeme",null); route(); };
+  $("#th").onclick = () => { const d = (document.documentElement.dataset.theme==="dark") || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme:dark)").matches); const t=d?"light":"dark"; setTheme(t); store.set("rm_theme",t); };
+  root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  views[name]($("#view"));
+  window.scrollTo(0,0);
+}
+const go = n => { if(location.hash.slice(1)===n) route(); else location.hash = n; };
+window.addEventListener("hashchange", route);
+
+function renderLogin(){
+  root.innerHTML = `<div class="login view"><div class="logo">RechargeMe<i></i></div>
+    <div class="float"><span class="op Orange">Orange</span><span class="op MTN">MTN</span><span class="op Moov">Moov</span></div>
+    <h1>Unités et data, en quelques secondes.</h1><p class="sub">Entrez votre numéro pour ouvrir votre compte.</p>
+    <label for="ph" style="margin-top:0">Numéro de téléphone</label>
+    <div class="fld"><input id="ph" inputmode="numeric" autocomplete="tel" placeholder="07 00 00 00 00"><span id="o"></span></div>
+    <p class="hint" id="h"></p><button class="cta acc" id="go" disabled>Continuer</button></div>`;
+  const ph=$("#ph"), btn=$("#go");
+  ph.oninput = () => { const d=digits(ph.value); ph.value=pretty(d); const op=operator(d);
+    $("#o").innerHTML = op ? `<span class="op ${op}">${op}</span>` : "";
+    $("#h").textContent = d.length>=2 && !op ? "Ce numéro n’est pas un numéro ivoirien valide." : "";
+    btn.disabled = !validPhone(d); };
+  btn.onclick = async () => {
+    btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+    const r = await API.login(digits(ph.value));
+    if(!r.ok){ toast(r.error||"Connexion impossible"); btn.disabled=false; btn.textContent="Continuer"; return; }
+    S = {phone:digits(ph.value), balance:7000, tx:[]};
+    const ago = d => new Date(Date.now()-d*864e5).toISOString();   // historique de démonstration
+    S.tx = [{kind:"out",label:"Pass c’chic 1,5 Go",sub:"05 00 00 00 00",amount:-1500,date:ago(1)},{kind:"out",label:"Unités Orange",sub:"07 00 00 00 00",amount:-500,date:ago(2)},{kind:"out",label:"Internet 3 Jours",sub:"05 00 00 00 00",amount:-1000,date:ago(4)},{kind:"in",label:"Recharge du compte",sub:"Wave · démo",amount:10000,date:ago(6)}].map((t,i)=>({id:i,phone:t.sub.replace(/\D/g,""),...t}));
+    save(); location.hash="accueil"; route();
+  };
+}
+
+function txRow(t){
+  const dd = new Date(t.date), d = dd.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})+", "+dd.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  const i = t.amount>0 ? "down" : t.kind==="internet" ? "data" : t.kind==="appels" ? "call" : t.kind==="out" ? "send" : "buy";
+  return `<div class="tx"><div class="l"><div class="dot ${t.amount>0?"in":""}">${ic(i,18)}</div><div><b>${esc(t.label)}</b><span>${esc(t.sub)} · ${d}</span></div></div><div class="amt ${t.amount>0?"in":""}">${t.amount>0?"+":"−"}${fmt(t.amount)}</div></div>`;
+}
+function weekChart(){
+  const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-6+i);return d;});
+  const v=days.map(d=>S.tx.filter(t=>t.amount<0&&new Date(t.date).toDateString()===d.toDateString()).reduce((a,t)=>a-t.amount,0));
+  const max=Math.max(...v,1), total=v.reduce((a,b)=>a+b,0);
+  return {total, html:`<div class="bars">${days.map((d,i)=>`<div class="bar ${v[i]?"":"z"}" title="${fmt(v[i])}"><i style="--h:${Math.max(6,Math.round(v[i]/max*84))}px;--n:${i}"></i>${d.toLocaleDateString("fr-FR",{weekday:"narrow"})}</div>`).join("")}</div>`};
+}
+
+function accueil(el){
+  const w = weekChart();
+  el.innerHTML = `<section class="hero"><div class="lbl"><span>Votre solde</span><button class="eye" id="eye">${S.hide?"Afficher":"Masquer"}</button></div>
+    <div class="bal"><span id="n">${S.hide?"••••":"0"}</span><small>F CFA</small></div>
+    <div class="acts"><button data-go="recharger">${ic("plus")}Recharger</button><button data-go="acheter">${ic("buy")}Acheter</button><button data-go="transferer">${ic("send")}Envoyer</button></div></section>
+    <section class="card"><div class="row"><h2>Dépenses, 7 derniers jours</h2><b>${fmt(w.total)}</b></div>${w.html}</section>
+    <div class="row"><h2>Dernières opérations</h2><button class="link" data-go="historique">Tout voir</button></div>
+    <div class="list">${S.tx.length ? S.tx.slice(0,5).map(txRow).join("") : '<p class="empty">Aucune opération. Rechargez votre compte pour commencer.</p>'}</div>`;
+  if(!S.hide) countUp($("#n"), S.balance);
+  $("#eye").onclick = () => { S.hide=!S.hide; save(); accueil(el); };
+  el.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+}
+
+const AMTS = [100,200,500,1000,2000,5000];
+function acheter(el){
+  const T = buy.type;
+  el.innerHTML = `<h1>Acheter</h1><p class="sub">Unités, internet ou appels, pour vous ou un proche.</p>
+    <div class="seg">${[["airtime","Unités"],["internet","Internet"],["appels","Appels"]].map(([k,l])=>`<button data-t="${k}" class="${T===k?"on":""}">${l}</button>`).join("")}</div>
+    <label for="ph">Numéro à recharger</label>
+    <div class="fld"><input id="ph" inputmode="numeric" placeholder="07 00 00 00 00" value="${pretty(buy.phone)}"><span id="o"></span></div>
+    <div class="chips" id="rec" style="margin-top:10px"></div><p class="hint" id="h"></p>
+    <div id="opts"></div>
+    <div class="sticky"><button class="cta acc" id="go" disabled>Acheter</button></div>`;
+  el.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { buy.type=b.dataset.t; buy.amount=0; buy.plan=null; buy.dur="all"; acheter(el); });
+  const ph=$("#ph"), opts=$("#opts");
+  const recents = [...new Set([S.phone, ...S.tx.map(t=>t.phone).filter(p=>p&&p.length===10)])].slice(0,4);
+  $("#rec").innerHTML = recents.map(p=>`<button class="chip" data-p="${p}">${p===S.phone?"Mon numéro":pretty(p)}</button>`).join("");
+  $("#rec").querySelectorAll("[data-p]").forEach(c => c.onclick = () => { buy.phone=c.dataset.p; ph.value=pretty(buy.phone); onPhone(true); });
+  const price = () => T==="airtime" ? buy.amount : (buy.plan ? buy.plan.price : 0);
+  const refresh = () => { const op=operator(buy.phone);
+    $("#o").innerHTML = op ? `<span class="op ${op}">${op}</span>` : "";
+    $("#h").textContent = buy.phone.length>=2 && !op ? "Numéro ivoirien invalide." : "";
+    const p=price(); $("#go").disabled = !(validPhone(buy.phone)&&p>0);
+    $("#go").textContent = p ? "Acheter · "+fmt(p).replace("\u00A0"," ") : "Acheter"; };
+  const onPhone = full => { const prev=buy.opSeen; buy.opSeen=operator(buy.phone); if(T!=="airtime" && prev!==buy.opSeen){ buy.plan=null; drawPlans(); } refresh(); };
+  ph.oninput = () => { buy.phone=digits(ph.value); ph.value=pretty(buy.phone); onPhone(); };
+  function drawAir(){
+    opts.innerHTML = `<label>Montant</label><div class="chips">${AMTS.map(a=>`<button class="chip ${buy.amount===a?"on":""}" data-a="${a}">${fmt(a)}</button>`).join("")}</div>
+      <label for="am">Autre montant (à partir de 100 F)</label><input id="am" inputmode="numeric" placeholder="Ex. 1500" value="${AMTS.includes(buy.amount)||!buy.amount?"":buy.amount}">`;
+    opts.querySelectorAll("[data-a]").forEach(c => c.onclick = () => { buy.amount=+c.dataset.a; $("#am").value=""; opts.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===c)); refresh(); });
+    $("#am").oninput = e => { const v=+digits(e.target.value); buy.amount=v>=100?v:0; opts.querySelectorAll(".chip").forEach(x=>x.classList.remove("on")); refresh(); };
+  }
+  async function drawPlans(){
+    const op = operator(buy.phone);
+    if(!op){ opts.innerHTML = `<p class="empty">Saisissez un numéro pour voir les forfaits de son opérateur.</p>`; return; }
+    opts.innerHTML = `<p class="empty"><span class="spin"></span></p>`;
+    const all = await API.plans(op, T);
+    if(!all.length){ opts.innerHTML = `<p class="empty">Les forfaits ${op} arrivent bientôt. Vous pouvez déjà acheter des unités.</p>`; return; }
+    const B = {all:["Tous",()=>true],c:["1 à 3 jours",p=>p.days<=3],m:["5 à 10 jours",p=>p.days>=5&&p.days<=10],l:["15 jours et +",p=>p.days>=15]};
+    const list = all.filter(B[buy.dur][1]);
+    opts.innerHTML = `<label>${all.length} forfaits ${op}</label>
+      <div class="chips" style="margin-bottom:14px">${Object.entries(B).map(([k,[l]])=>`<button class="chip ${buy.dur===k?"on":""}" data-d="${k}">${l}</button>`).join("")}</div>
+      ${list.map((p,i)=>`<button class="plan ${buy.plan&&buy.plan.id===p.id?"on":""}" data-id="${p.id}" style="--n:${i}"><span class="ic">${ic(T==="internet"?"data":"call",20)}</span><span><b>${esc(p.name)}</b><span class="v">${p.valid}</span></span><span class="p">${p.price.toLocaleString("fr-FR")}<small>FCFA</small></span></button>`).join("")||'<p class="empty">Aucun forfait dans cette durée.</p>'}`;
+    opts.querySelectorAll("[data-d]").forEach(c => c.onclick = () => { buy.dur=c.dataset.d; drawPlans(); });
+    opts.querySelectorAll("[data-id]").forEach(c => c.onclick = () => { buy.plan=all.find(x=>x.id===c.dataset.id); opts.querySelectorAll(".plan").forEach(x=>x.classList.toggle("on",x===c)); refresh(); });
+  }
+  buy.opSeen = operator(buy.phone);
+  T==="airtime" ? drawAir() : drawPlans();
+  $("#go").onclick = confirmBuy;
+  refresh();
+}
+
+function sheet(html){ const o=document.createElement("div"); o.className="ov"; o.innerHTML=`<div class="sheet">${html}</div>`; o.onclick=e=>{ if(e.target===o) o.remove(); }; document.body.appendChild(o); return o; }
+function receipt(title, rows, ref){
+  const o = sheet(`<svg class="ok" viewBox="0 0 80 80"><circle cx="40" cy="40" r="38"/><path d="M24 41l11 11 21-23"/></svg>
+    <h2 style="text-align:center">${title}</h2><div class="sum">${rows.map(([a,b])=>`<div class="row"><span>${a}</span><b>${b}</b></div>`).join("")}<div class="row"><span>Référence</span><b>${ref}</b></div></div>
+    <button class="cta" id="cp">Copier la référence</button><button class="ghost" id="cl">Terminer</button>`);
+  o.querySelector("#cl").onclick = () => o.remove();
+  o.querySelector("#cp").onclick = () => { try{ navigator.clipboard.writeText(ref); toast("Référence copiée"); }catch(e){ toast(ref); } };
+}
+function confirmSheet({title, rows, label, run, done}){
+  const o = sheet(`<h2>${title}</h2><div class="sum">${rows.map(([a,b])=>`<div class="row"><span>${a}</span><b>${b}</b></div>`).join("")}</div>
+    <button class="cta acc" id="ok">${label}</button><button class="ghost" id="no">Annuler</button>`);
+  o.querySelector("#no").onclick = () => o.remove();
+  o.querySelector("#ok").onclick = async e => { const b=e.currentTarget; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const r = await run(); o.remove(); if(r.ok) done(r); else toast(r.error||"L’opération a échoué. Réessayez."); };
+}
+
+function confirmBuy(){
+  const T=buy.type, air=T==="airtime", price=air?buy.amount:buy.plan.price, op=operator(buy.phone);
+  if(price > S.balance){ toast("Solde insuffisant. Rechargez votre compte."); return go("recharger"); }
+  const name = air ? "Unités "+op : buy.plan.name;
+  confirmSheet({ title:"Confirmer l’achat", rows:[["Produit",name],...(air?[]:[["Validité",buy.plan.valid]]),["Numéro",pretty(buy.phone)],["Total",fmt(price)]], label:"Payer "+fmt(price).replace("\u00A0"," "),
+    run:() => air ? API.buyAirtime({operator:op,phone:buy.phone,amount:price}) : API.buyPlan({operator:op,phone:buy.phone,plan:buy.plan}),
+    done:r => { S.balance-=price; addTx({kind:T,label:name,sub:pretty(buy.phone),phone:buy.phone,amount:-price,ref:r.ref});
+      receipt("Achat réussi", [["Produit",name],["Numéro",pretty(buy.phone)],["Total",fmt(price)]], r.ref);
+      buy={type:T,phone:"",amount:0,plan:null,dur:"all"}; go("accueil"); route(); } });
+}
+
+function recharger(el){
+  el.innerHTML = `<h1>Recharger</h1><p class="sub">Ajoutez de l’argent sur votre solde RechargeMe.</p>
+    <label style="margin-top:0">Payer avec</label><div class="chips">${PROVIDERS.map(p=>`<button class="chip ${rch.provider===p?"on":""}" data-pv="${p}">${LOGO[p]||""}${p}</button>`).join("")}</div>
+    <label>Montant</label><div class="chips">${[500,1000,2000,5000,10000,20000].map(a=>`<button class="chip ${rch.amount===a?"on":""}" data-a="${a}">${fmt(a)}</button>`).join("")}</div>
+    <label for="am">Autre montant (à partir de 100 F)</label><input id="am" inputmode="numeric" placeholder="Ex. 3000">
+    <div class="sticky"><button class="cta acc" id="go" disabled>Recharger</button></div>`;
+  const refresh = () => { const b=$("#go"); b.disabled=!rch.amount; b.textContent = rch.amount ? "Recharger "+fmt(rch.amount).replace("\u00A0"," ") : "Recharger"; };
+  el.querySelectorAll("[data-pv]").forEach(c => c.onclick = () => { rch.provider=c.dataset.pv; el.querySelectorAll("[data-pv]").forEach(x=>x.classList.toggle("on",x===c)); });
+  el.querySelectorAll("[data-a]").forEach(c => c.onclick = () => { rch.amount=+c.dataset.a; $("#am").value=""; el.querySelectorAll("[data-a]").forEach(x=>x.classList.toggle("on",x===c)); refresh(); });
+  $("#am").oninput = e => { const v=+digits(e.target.value); rch.amount=v>=100?v:0; el.querySelectorAll("[data-a]").forEach(x=>x.classList.remove("on")); refresh(); };
+  $("#go").onclick = () => confirmSheet({ title:"Confirmer la recharge", rows:[["Moyen de paiement",rch.provider],["Montant",fmt(rch.amount)],["Nouveau solde",fmt(S.balance+rch.amount)]], label:"Payer maintenant",
+    run:() => API.topUp({provider:rch.provider,phone:S.phone,amount:rch.amount}),
+    done:r => { S.balance+=rch.amount; addTx({kind:"in",label:"Recharge du compte",sub:rch.provider,amount:rch.amount,ref:r.ref}); receipt("Compte rechargé",[["Moyen",rch.provider],["Montant",fmt(rch.amount)]],r.ref); rch.amount=0; go("accueil"); route(); } });
+}
+
+function transferer(el){
+  el.innerHTML = `<h1>Envoyer</h1><p class="sub">Envoyez de l’argent à un autre compte RechargeMe, sans frais.</p>
+    <label for="to" style="margin-top:0">Numéro du destinataire</label><div class="fld"><input id="to" inputmode="numeric" placeholder="05 00 00 00 00" value="${pretty(xfer.to)}"><span id="o"></span></div><p class="hint" id="h"></p>
+    <label for="am">Montant</label><input id="am" inputmode="numeric" placeholder="Ex. 1000" value="${xfer.amount||""}">
+    <p class="hint">Solde disponible : ${fmt(S.balance)}</p>
+    <div class="sticky"><button class="cta acc" id="go" disabled>Envoyer</button></div>`;
+  const refresh = () => { const self=xfer.to===S.phone, op=operator(xfer.to);
+    $("#o").innerHTML = op ? `<span class="op ${op}">${op}</span>` : "";
+    $("#h").textContent = self ? "Vous ne pouvez pas vous envoyer de l’argent." : (xfer.to.length>=2&&!op ? "Numéro ivoirien invalide." : "");
+    $("#go").disabled = !(validPhone(xfer.to)&&!self&&xfer.amount>=100); };
+  $("#to").oninput = e => { xfer.to=digits(e.target.value); e.target.value=pretty(xfer.to); refresh(); };
+  $("#am").oninput = e => { xfer.amount=+digits(e.target.value); refresh(); };
+  $("#go").onclick = () => {
+    if(xfer.amount > S.balance){ toast("Solde insuffisant. Rechargez votre compte."); return go("recharger"); }
+    confirmSheet({ title:"Confirmer l’envoi", rows:[["Destinataire",pretty(xfer.to)],["Montant",fmt(xfer.amount)],["Frais","0 F"]], label:"Envoyer",
+      run:() => API.transfer({to:xfer.to,amount:xfer.amount}),
+      done:r => { S.balance-=xfer.amount; addTx({kind:"out",label:"Envoi d’argent",sub:pretty(xfer.to),phone:xfer.to,amount:-xfer.amount,ref:r.ref}); receipt("Envoi réussi",[["Destinataire",pretty(xfer.to)],["Montant",fmt(xfer.amount)]],r.ref); xfer={to:"",amount:0}; go("accueil"); route(); } });
+  };
+  refresh();
+}
+
+function historique(el){
+  const now=new Date(), m=S.tx.filter(t=>{const d=new Date(t.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  const spent=m.filter(t=>t.amount<0).reduce((a,t)=>a-t.amount,0), added=m.filter(t=>t.amount>0).reduce((a,t)=>a+t.amount,0);
+  const flt={all:()=>true,in:t=>t.amount>0,out:t=>t.amount<0}, list=S.tx.filter(flt[filter]), w=weekChart();
+  el.innerHTML = `<h1>Historique</h1><p class="sub">Vos dépenses et recharges.</p>
+    <div class="stat"><div><span>Dépensé ce mois</span><b>${fmt(spent)}</b></div><div><span>Rechargé ce mois</span><b>${fmt(added)}</b></div></div>
+    <section class="card"><h2>7 derniers jours</h2>${w.html}</section>
+    <div class="chips" style="margin:4px 0">${[["all","Tout"],["out","Dépenses"],["in","Entrées"]].map(([k,l])=>`<button class="chip ${filter===k?"on":""}" data-f="${k}">${l}</button>`).join("")}</div>
+    <div class="list">${list.length?list.map(txRow).join(""):'<p class="empty">Rien à afficher pour ce filtre.</p>'}</div>`;
+  el.querySelectorAll("[data-f]").forEach(c => c.onclick = () => { filter=c.dataset.f; historique(el); });
+}
+/* ===== v3 : paiement au choix, offres, compte, page d’accueil complète ===== */
+const SOLDE = "Solde RechargeMe";
+const LOGO = {
+  "Wave":`<img class="lg" alt="Wave" src="data:image/png;base64,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">`,
+  "MTN Money":`<svg class="lg" viewBox="0 0 40 40" aria-label="MTN Money"><rect width="40" height="40" fill="#ffcc00"/><ellipse cx="20" cy="20" rx="17" ry="11" fill="none" stroke="#000" stroke-width="2.4"/><text x="20" y="24" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#000">MTN</text></svg>`,
+  "Orange Money":`<svg class="lg" viewBox="0 0 40 40" aria-label="Orange Money"><rect width="40" height="40" fill="#ff7900"/><text x="4" y="35" font-family="Arial,sans-serif" font-weight="700" font-size="9.5" fill="#fff">orange</text></svg>`,
+  "Moov Money":`<svg class="lg" viewBox="0 0 40 40" aria-label="Moov Money"><rect width="40" height="40" fill="#0b63ce"/><text x="20" y="22" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#fff">moov</text><rect x="9" y="27" width="22" height="3" rx="1.5" fill="#ff7900"/></svg>`,
+  "Solde RechargeMe":`<svg class="lg" viewBox="0 0 40 40" aria-label="Solde RechargeMe"><rect width="40" height="40" fill="#000"/><circle cx="20" cy="20" r="7" fill="#7b88ff"/></svg>`
+};
+const PM = [[SOLDE,"#000"],["Wave","#1fb6ff"],["MTN Money","#ffcc00"],["Orange Money","#ff7900"],["Moov Money","#0b63ce"]];
+const SUPPORT = "2250000000000";   // TODO : numéro WhatsApp du support
+const FAQ = [["Quels moyens de paiement ?","Wave, MTN Money, Orange Money, Moov Money, ou votre solde RechargeMe."],["En combien de temps je reçois mon pass ?","En général en quelques secondes. Cela dépend aussi de l’opérateur."],["Puis-je recharger le numéro d’un proche ?","Oui. Saisissez son numéro à l’étape d’achat : l’opérateur est reconnu automatiquement."],["Mon achat n’est pas arrivé, que faire ?","Contactez le support avec la référence affichée sur votre reçu."]];
+const faqHtml = () => FAQ.map(([q,a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("");
+
+function confirmSheet({title, rows, label, run, done, pay, total}){
+  let pm = pay ? (S.balance>=total ? SOLDE : "Wave") : null, payer = S.phone;
+  const o = sheet(`<h2>${title}</h2><div class="sum">${rows.map(([a,b])=>`<div class="row"><span>${a}</span><b>${b}</b></div>`).join("")}</div>${pay?`<label style="margin:0 0 8px">Payer avec</label><div class="pay">${PM.map(([n,c])=>`<button class="po" data-m="${n}" ${n===SOLDE&&S.balance<total?"disabled":""}><span>${LOGO[n]}${n}</span><small>${n===SOLDE?(S.balance<total?"Solde insuffisant":fmt(S.balance)):""}</small></button>`).join("")}</div><div id="pn"></div>`:""}<button class="cta acc" id="ok" style="margin-top:18px">${label}</button><button class="ghost" id="no">Annuler</button>`);
+  const ok = o.querySelector("#ok");
+  const sync = () => {
+    o.querySelectorAll(".po").forEach(b => b.classList.toggle("on", b.dataset.m===pm));
+    if(!pay) return;
+    o.querySelector("#pn").innerHTML = pm!==SOLDE ? `<label>Numéro ${pm} qui paie</label><input id="py" inputmode="numeric" value="${pretty(payer)}">` : "";
+    const py = o.querySelector("#py");
+    if(py) py.oninput = () => { payer=digits(py.value); py.value=pretty(payer); ok.disabled=!validPhone(payer); };
+    ok.disabled = pm!==SOLDE && !validPhone(payer);
+  };
+  o.querySelectorAll(".po").forEach(b => b.onclick = () => { pm=b.dataset.m; sync(); });
+  sync();
+  o.querySelector("#no").onclick = () => o.remove();
+  ok.onclick = async () => { ok.disabled=true; ok.innerHTML='<span class="spin"></span>'; const r = await run(pm,payer); o.remove(); if(r.ok) done(r,pm); else toast(r.error||"L’opération a échoué. Réessayez."); };
+}
+
+function confirmBuy(){
+  const T=buy.type, air=T==="airtime", price=air?buy.amount:buy.plan.price, op=operator(buy.phone), name=air?"Unités "+op:buy.plan.name;
+  const base = [["Produit",name],...(air?[]:[["Validité",buy.plan.valid]]),["Numéro",pretty(buy.phone)],["Total",fmt(price)]];
+  confirmSheet({ title:"Confirmer l’achat", rows:base, label:"Payer "+fmt(price).replace("\u00A0"," "), pay:true, total:price,
+    run:(pm,payer) => air ? API.buyAirtime({operator:op,phone:buy.phone,amount:price,payWith:pm,payer}) : API.buyPlan({operator:op,phone:buy.phone,plan:buy.plan,payWith:pm,payer}),
+    done:(r,pm) => { if(pm===SOLDE) S.balance-=price;
+      addTx({kind:T,label:name,sub:pretty(buy.phone)+" ("+pm+")",phone:buy.phone,amount:-price,ref:r.ref});
+      receipt("Achat réussi",[...base,["Paiement",pm]],r.ref);
+      buy={type:T,phone:"",amount:0,plan:null,dur:"all"}; go("accueil"); route(); } });
+}
+
+function accueil(el){
+  const w = weekChart(), op = operator(S.phone);
+  const pick = (k,ps) => ps.map(p => mk(op,k).find(x=>x.price===p)).filter(Boolean);
+  const L = [...pick("internet",[200,500,1000,2500,5000]), ...pick("appels",[1000,5000])];
+  el.innerHTML = `<section class="hero"><div class="lbl"><span>Votre solde</span><button class="eye" id="eye">${S.hide?"Afficher":"Masquer"}</button></div>
+    <div class="bal"><span id="n">${S.hide?"••••":"0"}</span><small>F CFA</small></div>
+    <div class="acts"><button data-go="recharger">${ic("plus")}Recharger</button><button data-go="acheter">${ic("buy")}Acheter</button><button data-go="transferer">${ic("send")}Envoyer</button></div></section>
+    ${L.length?`<div class="row"><h2>Offres pour votre ${op}</h2></div><div class="hs">${L.map((p,i)=>`<button class="of" data-i="${i}"><span>${p.kind==="internet"?"Internet":"Appels"}, ${p.valid}</span><b>${esc(p.name.length>34?p.name.slice(0,32)+"…":p.name)}</b><div class="big">${p.price.toLocaleString("fr-FR")} F</div></button>`).join("")}</div>`:""}
+    <section class="card"><div class="row"><h2>Dépenses, 7 derniers jours</h2><b>${fmt(w.total)}</b></div>${w.html}</section>
+    <div class="row"><h2>Dernières opérations</h2><button class="link" data-go="historique">Tout voir</button></div>
+    <div class="list">${S.tx.length ? S.tx.slice(0,5).map(txRow).join("") : '<p class="empty">Aucune opération. Rechargez votre compte pour commencer.</p>'}</div>`;
+  if(!S.hide) countUp($("#n"), S.balance);
+  $("#eye").onclick = () => { S.hide=!S.hide; save(); accueil(el); };
+  el.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  el.querySelectorAll("[data-i]").forEach(b => b.onclick = () => { const p=L[+b.dataset.i]; buy={type:p.kind,phone:S.phone,amount:0,plan:p,dur:"all"}; go("acheter"); });
+}
+
+function compte(el){
+  const op = operator(S.phone), sp = S.tx.filter(t=>t.amount<0).reduce((a,t)=>a-t.amount,0);
+  el.innerHTML = `<h1>Compte</h1><p class="sub">Vos informations et l’aide.</p>
+    <section class="card"><div class="row"><div><b style="font-size:20px">${pretty(S.phone)}</b><div class="hint" style="margin:0">Numéro principal</div></div><span class="op ${op}">${op}</span></div></section>
+    <div class="stat"><div><span>Opérations</span><b>${S.tx.length}</b></div><div><span>Total dépensé</span><b>${fmt(sp)}</b></div></div>
+    <h2 style="margin:22px 0 4px">Aide</h2>${faqHtml()}
+    <a class="cta acc" style="margin-top:22px" href="https://wa.me/${SUPPORT}" target="_blank" rel="noopener">Écrire au support</a>
+    <button class="ghost" id="lo">Se déconnecter</button>`;
+  $("#lo").onclick = () => { S=null; store.set("rechargeme",null); route(); };
+}
+
+const landing = () => {
+  const cnt = o => CATALOG[o].internet.length + CATALOG[o].appels.length;
+  return `<div class="land">
+    <h2 class="lh">Comment ça marche</h2>
+    ${[["Créez votre compte","Un numéro de téléphone suffit."],["Choisissez votre pass","Unités, internet ou appels pour Orange, MTN et Moov."],["Payez comme vous voulez","Wave, MTN Money, Orange Money, Moov Money ou votre solde."]].map((s,i)=>`<div class="st"><b>${i+1}</b><div><h3>${s[0]}</h3><p>${s[1]}</p></div></div>`).join("")}
+    <h2 class="lh">Tous les opérateurs</h2>
+    <div class="ops">${["Orange","MTN","Moov"].map(o=>`<div class="oc"><span class="op ${o}" style="animation:none">${o}</span><b>${cnt(o)}</b><small>forfaits</small></div>`).join("")}</div>
+    <h2 class="lh">Pourquoi RechargeMe</h2>
+    <div class="adv">${[["Un seul compte","Rechargez n’importe quel numéro, sans changer d’application."],["Paiement mobile money","Wave et les trois mobile money acceptés à chaque achat."],["Reçu à chaque achat","Gardez une référence et retrouvez vos opérations dans l’historique."],["Envois sans frais","Envoyez de l’argent à vos proches inscrits sur RechargeMe."]].map(a=>`<div><h3>${a[0]}</h3><p>${a[1]}</p></div>`).join("")}</div>
+    <h2 class="lh">Questions fréquentes</h2>${faqHtml()}
+    <p class="foot">© 2026 RechargeMe, Abidjan</p></div>`;
+};
+
+function renderLogin(){
+  root.innerHTML = `<div class="login view"><div class="logo">RechargeMe<i></i></div>
+    <div class="float"><span class="op Orange">Orange</span><span class="op MTN">MTN</span><span class="op Moov">Moov</span></div>
+    <h1>Unités et data, en quelques secondes.</h1><p class="sub">Entrez votre numéro pour ouvrir votre compte.</p>
+    <label for="ph" style="margin-top:0">Numéro de téléphone</label>
+    <div class="fld"><input id="ph" inputmode="numeric" autocomplete="tel" placeholder="07 00 00 00 00"><span id="o"></span></div>
+    <p class="hint" id="h"></p><button class="cta acc" id="go" disabled>Continuer</button></div>${landing()}`;
+  const ph=$("#ph"), btn=$("#go");
+  ph.oninput = () => { const d=digits(ph.value); ph.value=pretty(d); const op=operator(d);
+    $("#o").innerHTML = op ? `<span class="op ${op}">${op}</span>` : "";
+    $("#h").textContent = d.length>=2 && !op ? "Ce numéro n’est pas un numéro ivoirien valide." : "";
+    btn.disabled = !validPhone(d); };
+  btn.onclick = async () => {
+    btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+    const r = await API.login(digits(ph.value));
+    if(!r.ok){ toast(r.error||"Connexion impossible"); btn.disabled=false; btn.textContent="Continuer"; return; }
+    S = {phone:digits(ph.value), balance:7000, tx:[]};
+    const ago = d => new Date(Date.now()-d*864e5).toISOString();   // historique de démonstration
+    S.tx = [{kind:"out",label:"Pass c’chic 1,5 Go",sub:"05 00 00 00 00",amount:-1500,date:ago(1)},{kind:"out",label:"Unités Orange",sub:"07 00 00 00 00",amount:-500,date:ago(2)},{kind:"out",label:"Internet 3 Jours",sub:"05 00 00 00 00",amount:-1000,date:ago(4)},{kind:"in",label:"Recharge du compte",sub:"Wave (démo)",amount:10000,date:ago(6)}].map((t,i)=>({id:i,phone:t.sub.replace(/\D/g,""),...t}));
+    save(); location.hash="accueil"; route();
+  };
+}
+route();
+})();
+</script>
+</body>
+</html>
