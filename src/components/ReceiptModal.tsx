@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Copy, CheckCheck, Share2, X } from 'lucide-react';
+import { Check, Copy, CheckCheck, Share2, X, ExternalLink } from 'lucide-react';
 import { fmtCFA } from '../data/catalog';
 
 export interface ReceiptRow {
@@ -11,10 +11,17 @@ interface ReceiptModalProps {
   title: string;
   rows: ReceiptRow[];
   refCode: string;
+  redirectUrl?: string;
   onClose: () => void;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ title, rows, refCode, onClose }) => {
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({
+  title,
+  rows,
+  refCode,
+  redirectUrl,
+  onClose,
+}) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -63,8 +70,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ title, rows, refCode
           {title}
         </h3>
         <p className="text-xs text-center text-slate-500 dark:text-zinc-400 mb-5">
-          Opération validée instantanément
+          Opération validée · Commande en cours de livraison
         </p>
+
+        {/* Jeko Direct Payment Link if present */}
+        {redirectUrl && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-center">
+            <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 block mb-2">
+              Lien de paiement sécurisé Jeko généré
+            </span>
+            <a
+              href={redirectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-md shadow-indigo-600/30 active:scale-95 transition-all w-full"
+            >
+              <span>Accéder au paiement Jeko</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        )}
 
         {/* Details Table */}
         <div className="bg-slate-50 dark:bg-zinc-800/60 rounded-2xl p-4 border border-slate-200/60 dark:border-zinc-700/60 space-y-3 mb-5">
@@ -123,3 +148,4 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ title, rows, refCode
     </div>
   );
 };
+

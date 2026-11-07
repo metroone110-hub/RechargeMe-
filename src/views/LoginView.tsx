@@ -1,19 +1,46 @@
-import React, { useState } from 'react';
-import { Loader2, ArrowRight, CheckCircle2, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
-import { digits, prettyPhone, getOperator, isValidPhone, CATALOG, SUPPORT } from '../data/catalog';
+import React, { useState, useMemo } from 'react';
+import {
+  Loader2,
+  ArrowRight,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
+  RefreshCw,
+  Wifi,
+  PhoneCall,
+  Search,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react';
+import {
+  digits,
+  prettyPhone,
+  getOperator,
+  isValidPhone,
+  CATALOG,
+  SUPPORT,
+  getCatalogPlans,
+  fmtCFA,
+} from '../data/catalog';
 import { OperatorLogo } from '../data/logos';
 import { API } from '../services/api';
-import { UserAccount } from '../types';
+import { Operator, Plan, PlanKind, UserAccount } from '../types';
 
 interface LoginViewProps {
-  onLoginSuccess: (user: UserAccount) => void;
+  onLoginSuccess: (user: UserAccount, preselectedPlan?: Plan) => void;
   onOpenSupport: () => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupport }) => {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Landing catalog explorer state
+  const [selectedOp, setSelectedOp] = useState<Operator>('Orange');
+  const [selectedKind, setSelectedKind] = useState<PlanKind>('internet');
+  const [catalogSearch, setCatalogSearch] = useState('');
 
   const clean = digits(phone);
   const operator = getOperator(clean);
@@ -42,14 +69,56 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
     }
   };
 
+  // Instant 1-click demo login for reviewers and auditors (like DEX Pay)
+  const handleDemoLogin = async (prePlan?: Plan) => {
+    setDemoLoading(true);
+    const demoPhone = prePlan ? (prePlan.operator === 'MTN' ? '0501020304' : prePlan.operator === 'Moov' ? '0102030405' : '0708091011') : '0708091011';
+    const res = await API.login(demoPhone);
+    setDemoLoading(false);
+    if (res.ok && res.user) {
+      onLoginSuccess(res.user, prePlan);
+    }
+  };
+
   const totalPlans = (op: keyof typeof CATALOG) =>
     CATALOG[op].internet.length + CATALOG[op].appels.length;
 
+  // Real plans for the landing explorer
+  const visiblePlans = useMemo(() => {
+    const all = getCatalogPlans(selectedOp, selectedKind);
+    if (!catalogSearch) return all.slice(0, 8); // show top 8
+    const q = catalogSearch.toLowerCase();
+    return all.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.valid.toLowerCase().includes(q) ||
+        p.price.toString().includes(q)
+    );
+  }, [selectedOp, selectedKind, catalogSearch]);
+
   return (
     <div className="min-h-screen flex flex-col justify-between max-w-4xl mx-auto px-4 py-8">
+      {/* Top Banner for DEX Pay / Reviewers */}
+      <div className="mb-6 p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200 text-center sm:text-left">
+          <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <span>
+            <strong>Visiteur ou Partenaire (DEX Pay) ?</strong> Vous pouvez tester la cabine et les offres en 1 clic sans inscription.
+          </span>
+        </div>
+        <button
+          onClick={() => handleDemoLogin()}
+          disabled={demoLoading}
+          className="shrink-0 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-xs"
+        >
+          {demoLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+          <span>Accéder en mode Démo</span>
+        </button>
+      </div>
+
       {/* Login Card Header */}
-      <div className="max-w-md mx-auto w-full pt-4 pb-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-md mx-auto w-full pt-2 pb-6">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
               <span className="font-extrabold text-base tracking-tighter">RM</span>
@@ -164,14 +233,137 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
             )}
           </button>
 
-          <p className="text-center text-[11px] text-slate-400 dark:text-zinc-500 pt-1">
-            Aucun mot de passe requis. Vos préférences restent enregistrées sur votre appareil.
-          </p>
+          {/* Quick Demo Access Button */}
+          <button
+            type="button"
+            onClick={() => handleDemoLogin()}
+            disabled={demoLoading}
+            className="w-full min-h-[44px] rounded-2xl border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-zinc-800/60 active:scale-95 transition-all"
+          >
+            {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-500" />}
+            <span>Ou tester la démo avec 7 000 F CFA de solde</span>
+          </button>
         </form>
       </div>
 
+      {/* =========================================================================
+          NOUVEAU : CATALOGUE COMPLET ET OFFRES EN DIRECT DIRECTEMENT SUR L'ACCUEIL
+          ========================================================================= */}
+      <div className="my-8 border-t border-slate-200/80 dark:border-zinc-800/80 pt-8 space-y-6">
+        <div className="text-center max-w-lg mx-auto">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold text-xs mb-2">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Catalogue officiel en ligne</span>
+          </div>
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Consultez les forfaits et offres en direct
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+            Tous les pass Internet et Appels pour Orange, MTN et Moov avec leurs tarifs réels.
+          </p>
+        </div>
+
+        {/* Operator Selector Tabs */}
+        <div className="bg-slate-100 dark:bg-zinc-800/80 p-1 rounded-2xl grid grid-cols-3 gap-1 max-w-md mx-auto">
+          {(['Orange', 'MTN', 'Moov'] as const).map((op) => (
+            <button
+              key={op}
+              onClick={() => setSelectedOp(op)}
+              className={`min-h-[44px] rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
+                selectedOp === op
+                  ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs scale-[1.02]'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
+              }`}
+            >
+              <OperatorLogo operator={op} size={20} className="rounded-md" />
+              <span>{op}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Kind Toggle (Internet vs Appels) & Search */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-xl mx-auto">
+          <div className="bg-slate-100 dark:bg-zinc-800/80 p-1 rounded-xl flex gap-1 w-full sm:w-auto">
+            <button
+              onClick={() => setSelectedKind('internet')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                selectedKind === 'internet'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-zinc-400'
+              }`}
+            >
+              <Wifi className="w-3.5 h-3.5" />
+              <span>Internet ({CATALOG[selectedOp].internet.length})</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedKind('appels')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                selectedKind === 'appels'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-zinc-400'
+              }`}
+            >
+              <PhoneCall className="w-3.5 h-3.5" />
+              <span>Appels ({CATALOG[selectedOp].appels.length})</span>
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              placeholder="Rechercher un pass (ex: 1.5 Go)..."
+              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Grid of Plan Cards directly on the Landing */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+          {visiblePlans.map((plan) => (
+            <div
+              key={plan.id}
+              className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs hover:border-indigo-500 dark:hover:border-indigo-500 transition-all flex flex-col justify-between gap-3 group"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300">
+                    {plan.valid}
+                  </span>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1.5 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {plan.name}
+                  </h4>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="font-black text-base text-slate-900 dark:text-white num-tabular block">
+                    {plan.price.toLocaleString('fr-FR')} F
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">CFA</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleDemoLogin(plan)}
+                className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-zinc-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-98"
+              >
+                <span>Prendre ce pass</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-center text-xs text-slate-400 pt-1">
+          Affichage des forfaits officiels {selectedOp} Côte d'Ivoire. Choisissez un pass pour lancer l'achat immédiat.
+        </p>
+      </div>
+
       {/* Feature Section & Trust */}
-      <div className="mt-8 border-t border-slate-200/80 dark:border-zinc-800/80 pt-10 pb-6 space-y-12">
+      <div className="border-t border-slate-200/80 dark:border-zinc-800/80 pt-8 pb-6 space-y-12">
         {/* 3 Operators summary */}
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight text-center mb-6">

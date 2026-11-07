@@ -46,3 +46,22 @@ export interface BuyState {
   durationFilter: 'all' | 'short' | 'medium' | 'long';
   searchQuery: string;
 }
+
+export type OrderStatus = 'PENDING' | 'DELIVERED' | 'CANCELLED';
+
+export interface AgentOrder {
+  id: string;
+  ref: string;
+  createdAt: string;
+  destPhone: string;
+  operator: Operator;
+  productType: 'airtime' | 'internet' | 'appels';
+  planName: string;
+  planValid?: string;
+  amount: number;
+  payWith: string;
+  payerPhone?: string;
+  status: OrderStatus;
+  deliveredAt?: string;
+  deliveredBy?: string;
+}

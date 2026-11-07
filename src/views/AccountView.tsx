@@ -9,6 +9,7 @@ interface AccountViewProps {
   onLogout: () => void;
   onOpenSupport: () => void;
   onOpenArch?: () => void;
+  onOpenAgent?: () => void;
 }
 
 const FAQ_ITEMS = [
@@ -39,6 +40,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
   onLogout,
   onOpenSupport,
   onOpenArch,
+  onOpenAgent,
 }) => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const operator = getOperator(user.phone) || 'Orange';
@@ -212,7 +214,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
       </div>
 
       {/* Logout button */}
-      <div className="pt-2">
+      <div className="pt-2 space-y-3">
         <button
           onClick={onLogout}
           className="w-full min-h-[48px] rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition-colors"
@@ -220,6 +222,18 @@ export const AccountView: React.FC<AccountViewProps> = ({
           <LogOut className="w-4 h-4" />
           <span>Se déconnecter de ce numéro</span>
         </button>
+
+        {onOpenAgent && (
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={onOpenAgent}
+              className="text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-flex items-center gap-1"
+            >
+              <span>Accès Espace Agent & Dispatch (PIN)</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

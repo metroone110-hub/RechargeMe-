@@ -7,6 +7,7 @@ import { ReceiptModal, ReceiptRow } from './components/ReceiptModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { QuickHelpModal } from './components/QuickHelpModal';
 import { TelecomArchModal } from './components/TelecomArchModal';
+import { AgentDispatchModal } from './components/AgentDispatchModal';
 import { LoginView } from './views/LoginView';
 import { HomeView } from './views/HomeView';
 import { BuyView } from './views/BuyView';
@@ -28,6 +29,7 @@ export default function App() {
     title: string;
     rows: ReceiptRow[];
     refCode: string;
+    redirectUrl?: string;
   } | null>(null);
 
   const [confirmData, setConfirmData] = useState<{
@@ -41,13 +43,33 @@ export default function App() {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isArchOpen, setIsArchOpen] = useState(false);
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync theme on mount
+  // Sync theme on mount and check payment callback params
   useEffect(() => {
     const savedTheme = API.getTheme();
     setTheme(savedTheme);
     API.setTheme(savedTheme);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const ref = urlParams.get('ref');
+    const dest = urlParams.get('dest');
+    if (paymentStatus === 'success' && ref) {
+      showToast('Paiement Jeko validé ! Activation en cours...');
+      setReceiptData({
+        isOpen: true,
+        title: 'Paiement Jeko validé avec succès',
+        rows: [
+          { label: 'Statut du paiement', value: 'Confirmé via Jeko Pay' },
+          ...(dest ? [{ label: 'Numéro bénéficiaire', value: prettyPhone(dest) }] : []),
+          { label: 'Date', value: new Date().toLocaleDateString('fr-FR') },
+        ],
+        refCode: ref,
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const showToast = (msg: string) => {
@@ -137,15 +159,26 @@ export default function App() {
         if (res && res.ok) {
           refreshUser();
           setConfirmData(null);
+
+          // Si redirection vers la page de paiement sécurisée Jeko
+          if (res.redirectUrl && provider !== 'Solde RechargeMe') {
+            try {
+              window.open(res.redirectUrl, '_blank');
+            } catch {
+              // Ignorer si popup bloquée, le bouton dans le reçu prend le relais
+            }
+          }
+
           setReceiptData({
             isOpen: true,
-            title: 'Achat validé avec succès',
+            title: provider === 'Solde RechargeMe' ? 'Achat validé avec succès' : 'Paiement Jeko initié',
             rows: [
               ...summaryRows,
               { label: 'Moyen de paiement', value: provider },
               { label: 'Date', value: new Date().toLocaleDateString('fr-FR') },
             ],
             refCode: res.ref,
+            redirectUrl: res.redirectUrl,
           });
           setPreselectedPlan(null);
         } else {
@@ -265,10 +298,16 @@ export default function App() {
           onOpenArch={() => setIsArchOpen(true)}
         />
         <LoginView
-          onLoginSuccess={(loggedUser) => {
+          onLoginSuccess={(loggedUser, prePlan) => {
             setUser(loggedUser);
-            setCurrentTab('accueil');
-            showToast('Bienvenue sur votre cabine RechargeMe !');
+            if (prePlan) {
+              setPreselectedPlan(prePlan);
+              setCurrentTab('acheter');
+              showToast(`Forfait sélectionné : ${prePlan.name}`);
+            } else {
+              setCurrentTab('accueil');
+              showToast('Bienvenue sur votre cabine RechargeMe !');
+            }
           }}
           onOpenSupport={() => setIsHelpOpen(true)}
         />
@@ -339,6 +378,7 @@ export default function App() {
             onLogout={handleLogout}
             onOpenSupport={() => setIsHelpOpen(true)}
             onOpenArch={() => setIsArchOpen(true)}
+            onOpenAgent={() => setIsAgentOpen(true)}
           />
         )}
       </main>
@@ -352,6 +392,7 @@ export default function App() {
           title={receiptData.title}
           rows={receiptData.rows}
           refCode={receiptData.refCode}
+          redirectUrl={receiptData.redirectUrl}
           onClose={() => setReceiptData(null)}
         />
       )}
@@ -375,6 +416,10 @@ export default function App() {
 
       {isArchOpen && (
         <TelecomArchModal onClose={() => setIsArchOpen(false)} />
+      )}
+
+      {isAgentOpen && (
+        <AgentDispatchModal onClose={() => setIsAgentOpen(false)} />
       )}
     </div>
   );
