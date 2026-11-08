@@ -1,29 +1,29 @@
 import React, { useState, useMemo } from 'react';
-import { MessageCircle, Phone, LogOut, ChevronDown, ChevronUp, ShieldCheck, UserCheck, HelpCircle, Cpu } from 'lucide-react';
+import { MessageCircle, Phone, LogOut, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
 import { UserAccount } from '../types';
 import { getOperator, prettyPhone, fmtCFA, SUPPORT } from '../data/catalog';
 import { OperatorLogo } from '../data/logos';
+import { PWAInstallButton } from '../components/PWAInstallButton';
 
 interface AccountViewProps {
   user: UserAccount;
   onLogout: () => void;
   onOpenSupport: () => void;
-  onOpenArch?: () => void;
   onOpenAgent?: () => void;
 }
 
 const FAQ_ITEMS = [
   {
-    q: 'Quels moyens de paiement sont supportés ?',
-    a: 'Wave, MTN Mobile Money, Orange Money, Moov Money, ou directement le solde de votre compte RechargeMe.',
+    q: 'Quels moyens de paiement sont acceptés ?',
+    a: 'Wave, Orange Money, MTN MoMo et Moov Money, ou directement le solde de votre compte RechargeMe.',
   },
   {
     q: 'En combien de temps mon pass ou mes unités sont livrés ?',
-    a: 'En quelques secondes seulement. La livraison est automatique et confirmée par SMS de votre opérateur.',
+    a: 'En quelques secondes seulement. La livraison est confirmée par SMS officiel de votre opérateur.',
   },
   {
     q: 'Puis-je recharger le numéro d’un proche ?',
-    a: 'Oui, sans aucune restriction. Dans l’onglet Acheter, entrez simplement le numéro du destinataire : l’opérateur est détecté automatiquement.',
+    a: 'Oui, sans aucune restriction. Dans l’onglet Acheter, saisissez simplement le numéro du destinataire : son opérateur est détecté automatiquement.',
   },
   {
     q: 'Mon achat n’est pas arrivé, que faire ?',
@@ -39,7 +39,6 @@ export const AccountView: React.FC<AccountViewProps> = ({
   user,
   onLogout,
   onOpenSupport,
-  onOpenArch,
   onOpenAgent,
 }) => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -96,6 +95,9 @@ export const AccountView: React.FC<AccountViewProps> = ({
         </div>
       </div>
 
+      {/* PWA Install Banner */}
+      <PWAInstallButton variant="card" />
+
       {/* Stats summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-xs">
@@ -127,7 +129,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
             Support client 24h/24 & 7j/7
           </h3>
           <p className="text-xs text-indigo-200 mt-1 leading-relaxed">
-            Notre équipe à Abidjan est disponible pour vérifier vos transactions ou répondre à vos questions.
+            Notre équipe est disponible pour vérifier vos transactions ou répondre à vos questions.
           </p>
         </div>
 
@@ -151,31 +153,6 @@ export const AccountView: React.FC<AccountViewProps> = ({
           </a>
         </div>
       </div>
-
-      {/* Backend & Telecom Architecture Explanation Trigger */}
-      {onOpenArch && (
-        <button
-          onClick={onOpenArch}
-          className="w-full p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60 text-left flex items-center justify-between gap-3 group transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-extrabold text-sm text-slate-900 dark:text-white block group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                Comment fonctionne le backend (Style TransfertCI)
-              </span>
-              <span className="text-xs text-slate-500 dark:text-zinc-400">
-                Passerelles USSD, Puces Master revendeur et APIs télécoms
-              </span>
-            </div>
-          </div>
-          <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
-            Explorer →
-          </span>
-        </button>
-      )}
 
       {/* FAQ Accordion */}
       <div className="space-y-3">
@@ -213,14 +190,14 @@ export const AccountView: React.FC<AccountViewProps> = ({
         </div>
       </div>
 
-      {/* Logout button */}
+      {/* Logout button & Discreet Agent Dispatch */}
       <div className="pt-2 space-y-3">
         <button
           onClick={onLogout}
           className="w-full min-h-[48px] rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          <span>Se déconnecter de ce numéro</span>
+          <span>Se déconnecter</span>
         </button>
 
         {onOpenAgent && (

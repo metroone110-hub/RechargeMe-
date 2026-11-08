@@ -29,8 +29,8 @@ app.use(
 const JEKO_API_KEY =
   process.env.JEKO_API_KEY || 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da';
 const JEKO_WEBHOOK_SECRET =
-  process.env.JEKO_WEBHOOK_SECRET || '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39';
-const JEKO_STORE_ID = process.env.JEKO_STORE_ID || '59ae202a-f583-4a15-970f-9e99bd1e0baa';
+  process.env.JEKO_WEBHOOK_SECRET || '533e792aaaf1369cec78cdcda70d3abcce36d40fd34cfdb6df088e4323a4fe7a';
+const JEKO_STORE_ID = process.env.JEKO_STORE_ID || 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8';
 const JEKO_API_BASE = 'https://api.jeko.africa/partner_api';
 
 // Types & Data Structures
@@ -79,41 +79,8 @@ interface AgentOrderRecord {
 
 const usersDb = new Map<string, UserRecord>();
 
-// Pre-seeded realistic orders
-const ordersDb: AgentOrderRecord[] = [
-  {
-    id: 'ord-1',
-    ref: 'FP82910482',
-    createdAt: new Date(Date.now() - 12 * 60000).toISOString(),
-    destPhone: '0708091011',
-    operator: 'Orange',
-    productType: 'internet',
-    planName: 'Pass spécial 1,5 Go',
-    planValid: '3 jours',
-    amount: 500,
-    payWith: 'Jeko (Wave)',
-    payerPhone: '0708091011',
-    status: 'DELIVERED',
-    paymentStatus: 'PAID',
-    deliveredAt: new Date(Date.now() - 10 * 60000).toISOString(),
-    deliveredBy: 'Orange Max It',
-  },
-  {
-    id: 'ord-2',
-    ref: 'FP91028374',
-    createdAt: new Date(Date.now() - 3 * 60000).toISOString(),
-    destPhone: '0501020304',
-    operator: 'MTN',
-    productType: 'internet',
-    planName: 'Pass c’chic 1,5 Go',
-    planValid: '3 jours',
-    amount: 500,
-    payWith: 'Jeko (MTN MoMo)',
-    payerPhone: '0501020304',
-    status: 'PENDING',
-    paymentStatus: 'PAID',
-  },
-];
+// Real incoming orders feed (populated by client payments & Jeko webhook)
+const ordersDb: AgentOrderRecord[] = [];
 
 // Helper functions for Ivorian numbers
 function cleanDigits(phone: string): string {
@@ -136,25 +103,12 @@ function generateRef(prefix: 'UN' | 'FP' | 'TP' | 'TR'): string {
   return `${prefix}${ts}${rand}`;
 }
 
-function getUssdSimulation(operator: string, phone: string, amount: number): string {
-  switch (operator) {
-    case 'Orange':
-      return `*144*2*1*${phone}*${amount}*XXXX#`;
-    case 'MTN':
-      return `*105*1*${phone}*${amount}*XXXX#`;
-    case 'Moov':
-      return `*155*2*${phone}*${amount}*XXXX#`;
-    default:
-      return `*100*${phone}*${amount}*XXXX#`;
-  }
-}
-
 function getOrCreateUser(phone: string): UserRecord {
   const clean = cleanDigits(phone);
   if (!usersDb.has(clean)) {
     usersDb.set(clean, {
       phone: clean,
-      balance: 7000,
+      balance: 0,
       transactions: [],
       createdAt: new Date().toISOString(),
     });
@@ -217,44 +171,6 @@ app.get('/api/jeko/config', (req: Request, res: Response) => {
 });
 
 /**
- * Statut des passerelles télécoms
- */
-app.get('/api/telecom/status', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ONLINE',
-    region: "Côte d'Ivoire (CI / 225)",
-    networks: {
-      Orange: {
-        status: 'UP',
-        latencyMs: 140,
-        gatewayMode: 'API_DIRECT_B2B + SIM_GATEWAY_BACKUP',
-        simBalanceCfa: 450000,
-      },
-      MTN: {
-        status: 'UP',
-        latencyMs: 180,
-        gatewayMode: 'MTN_MOMO_OPENAPI + USSD_MASTER',
-        simBalanceCfa: 380000,
-      },
-      Moov: {
-        status: 'UP',
-        latencyMs: 220,
-        gatewayMode: 'MOOV_B2B_AGGREGATOR + SIM_SERVER',
-        simBalanceCfa: 290000,
-      },
-    },
-    paymentMethods: {
-      Jeko: 'JEKO_CHECKOUT_API_v1 (Active)',
-      Wave: 'WAVE_MERCHANT_CHECKOUT_API_v1',
-      OrangeMoney: 'ORANGE_OM_WEB_PAYMENT_CI',
-      MTNMoMo: 'MTN_COLLECTION_API',
-      MoovMoney: 'MOOV_FLOOT_PAY_v2',
-    },
-    pendingOrdersCount: ordersDb.filter((o) => o.status === 'PENDING').length,
-  });
-});
-
-/**
  * Connexion / Authentification utilisateur
  */
 app.post('/api/auth/login', (req: Request, res: Response) => {
@@ -309,13 +225,16 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
     return res.status(400).json({ ok: false, error: 'Montant minimum : 100 F CFA' });
   }
 
-  // Déterminer la méthode de paiement Jeko (wave, orange_money, mtn_momo, moov_money)
-  let jekoMethod = 'wave';
+  // Déterminer la méthode de paiement selon la doc officielle Jèko :
+  // "wave" | "orange" | "mtn" | "moov" | "djamo" | "jeko"
+  let jekoMethod: 'wave' | 'orange' | 'mtn' | 'moov' | 'djamo' | 'jeko' = 'wave';
   const pLower = (provider || '').toLowerCase();
-  if (pLower.includes('wave')) jekoMethod = 'wave';
-  else if (pLower.includes('orange')) jekoMethod = 'orange_money';
-  else if (pLower.includes('mtn')) jekoMethod = 'mtn_momo';
-  else if (pLower.includes('moov')) jekoMethod = 'moov_money';
+  if (pLower.includes('orange')) jekoMethod = 'orange';
+  else if (pLower.includes('mtn')) jekoMethod = 'mtn';
+  else if (pLower.includes('moov')) jekoMethod = 'moov';
+  else if (pLower.includes('djamo')) jekoMethod = 'djamo';
+  else if (pLower.includes('jeko')) jekoMethod = 'jeko';
+  else jekoMethod = 'wave';
 
   const ref = generateRef(orderType === 'airtime' ? 'UN' : 'FP');
   const planName = plan?.name || (orderType === 'airtime' ? `Unités ${operator} (${numAmount} F)` : 'Forfait Télécom');
@@ -324,8 +243,8 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
   const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
   const appOrigin = `${protocol}://${host}`;
 
-  const successUrl = `${appOrigin}/?payment=success&ref=${ref}&dest=${cleanDest}`;
-  const errorUrl = `${appOrigin}/?payment=error&ref=${ref}`;
+  const successUrl = `${appOrigin}/?payment=success&reference=${ref}&order=${ref}&dest=${cleanDest}`;
+  const errorUrl = `${appOrigin}/?payment=error&reference=${ref}&order=${ref}`;
 
   // 1. Préparer et enregistrer la commande dans la file de l'Agent Dispatch
   const orderRecord: AgentOrderRecord = {
@@ -498,7 +417,6 @@ app.post('/api/airtime/buy', (req: Request, res: Response) => {
   }
 
   const ref = generateRef('UN');
-  const ussd = getUssdSimulation(operator, cleanDest, numAmount);
 
   const tx: TransactionRecord = {
     id: `tx-${Date.now()}`,
@@ -512,8 +430,6 @@ app.post('/api/airtime/buy', (req: Request, res: Response) => {
     provider: payWith || 'Jeko',
     operator,
     status: 'SUCCESS',
-    ussdCommand: ussd,
-    gateway: 'USSD_GATEWAY',
   };
 
   user.transactions.unshift(tx);
@@ -539,12 +455,7 @@ app.post('/api/airtime/buy', (req: Request, res: Response) => {
     operator,
     amount: numAmount,
     newBalance: user.balance,
-    delivery: {
-      method: 'TELECOM_IN_GATEWAY',
-      ussdSimulated: ussd,
-      estimatedDeliveryTime: '3 secondes',
-      status: 'DELIVERED',
-    },
+    status: 'SUCCESS',
   });
 });
 
@@ -905,82 +816,6 @@ const handleJekoWebhook = (req: Request, res: Response) => {
 app.all('/api/webhooks/jeko', handleJekoWebhook);
 app.all('/webhook/jeko', handleJekoWebhook);
 app.all('/webhooks/jeko', handleJekoWebhook);
-
-/**
- * Simulation du Webhook Jeko avec calcul réel de la signature HMAC-SHA256
- * Permet au créateur de tester l'intégration et l'arrivée de commandes en temps réel
- */
-app.post('/api/jeko/simulate-webhook', (req: Request, res: Response) => {
-  const { destPhone = '0708091011', planName = 'Pass spécial 1,5 Go', amount = 500, paymentMethod = 'wave' } = req.body;
-  const cleanDest = cleanDigits(destPhone);
-  const operator = detectOperator(cleanDest);
-  const ref = generateRef('FP');
-
-  const simulatedPayload = {
-    event: 'payment.succeeded',
-    reference: ref,
-    amount: amount,
-    status: 'success',
-    data: {
-      id: `jeko_sim_${Date.now()}`,
-      reference: ref,
-      status: 'success',
-      amountCents: amount * 100,
-      paymentMethod: paymentMethod,
-      description: `Souscription ${planName}`,
-      customer: {
-        phone: cleanDest,
-      },
-      metadata: {
-        dest_phone: cleanDest,
-        plan_name: planName,
-        product_type: planName.toLowerCase().includes('appel') ? 'appels' : 'internet',
-        operator,
-      },
-      transaction: {
-        id: `txn_${Date.now()}`,
-        status: 'success',
-        counterpartIdentifier: `+225${cleanDest}`,
-        executedAt: new Date().toISOString(),
-      },
-    },
-  };
-
-  const payloadString = JSON.stringify(simulatedPayload);
-  const hmac = crypto.createHmac('sha256', JEKO_WEBHOOK_SECRET.trim());
-  hmac.update(payloadString);
-  const signature = hmac.digest('hex');
-
-  // Enregistrer directement dans ordersDb
-  ordersDb.unshift({
-    id: `ord-sim-${Date.now()}`,
-    ref,
-    createdAt: new Date().toISOString(),
-    destPhone: cleanDest,
-    operator,
-    productType: planName.toLowerCase().includes('appel') ? 'appels' : 'internet',
-    planName,
-    planValid: '3 jours',
-    amount: parseInt(amount, 10),
-    payWith: `Jeko (${paymentMethod.toUpperCase()})`,
-    payerPhone: cleanDest,
-    status: 'PENDING',
-    paymentStatus: 'PAID',
-  });
-
-  return res.json({
-    ok: true,
-    message: 'Simulation de webhook Jeko exécutée avec succès !',
-    generatedSignature: signature,
-    signatureAlgorithm: 'HMAC-SHA256',
-    reference: ref,
-    orderQueued: true,
-    destPhone: cleanDest,
-    operator,
-    amount,
-    planName,
-  });
-});
 
 /* ==========================================================================
    VITE & STATIC CLIENT SERVING

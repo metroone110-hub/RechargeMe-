@@ -1,7 +1,8 @@
 import React from 'react';
-import { Moon, Sun, MessageCircle, LogOut, Cpu } from 'lucide-react';
+import { Moon, Sun, MessageCircle, LogOut } from 'lucide-react';
 import { prettyPhone, getOperator } from '../data/catalog';
 import { OperatorLogo } from '../data/logos';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   phone?: string;
@@ -9,7 +10,6 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onLogout: () => void;
   onOpenSupport: () => void;
-  onOpenArch?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,7 +18,6 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onLogout,
   onOpenSupport,
-  onOpenArch,
 }) => {
   const op = phone ? getOperator(phone) : null;
 
@@ -37,6 +36,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* PWA Install Button */}
+          <PWAInstallButton variant="badge" />
+
           {phone && (
             <div className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-full border border-slate-200/60 dark:border-zinc-800">
               {op && <OperatorLogo operator={op} size={18} className="rounded-md" />}
@@ -44,19 +46,6 @@ export const Header: React.FC<HeaderProps> = ({
                 {prettyPhone(phone)}
               </span>
             </div>
-          )}
-
-          {/* Backend Architecture & SIM Gateway Info */}
-          {onOpenArch && (
-            <button
-              onClick={onOpenArch}
-              aria-label="Architecture technique backend"
-              className="min-h-[40px] px-2.5 flex items-center gap-1.5 rounded-full text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 transition-colors text-xs font-bold"
-              title="Architecture & Passerelles Télécom"
-            >
-              <Cpu className="w-4 h-4" />
-              <span className="hidden md:inline">Backend API</span>
-            </button>
           )}
 
           {/* Support WhatsApp Trigger */}

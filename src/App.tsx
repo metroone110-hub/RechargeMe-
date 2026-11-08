@@ -6,7 +6,6 @@ import { BottomNav, NavTab } from './components/BottomNav';
 import { ReceiptModal, ReceiptRow } from './components/ReceiptModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { QuickHelpModal } from './components/QuickHelpModal';
-import { TelecomArchModal } from './components/TelecomArchModal';
 import { AgentDispatchModal } from './components/AgentDispatchModal';
 import { LoginView } from './views/LoginView';
 import { HomeView } from './views/HomeView';
@@ -42,7 +41,6 @@ export default function App() {
   } | null>(null);
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isArchOpen, setIsArchOpen] = useState(false);
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -54,8 +52,9 @@ export default function App() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment');
-    const ref = urlParams.get('ref');
+    const ref = urlParams.get('reference') || urlParams.get('ref') || urlParams.get('order');
     const dest = urlParams.get('dest');
+
     if (paymentStatus === 'success' && ref) {
       showToast('Paiement Jeko validé ! Activation en cours...');
       setReceiptData({
@@ -68,6 +67,9 @@ export default function App() {
         ],
         refCode: ref,
       });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === 'error') {
+      showToast('Le paiement Jeko a échoué ou a été annulé.');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -295,7 +297,6 @@ export default function App() {
           onToggleTheme={handleToggleTheme}
           onLogout={() => {}}
           onOpenSupport={() => setIsHelpOpen(true)}
-          onOpenArch={() => setIsArchOpen(true)}
         />
         <LoginView
           onLoginSuccess={(loggedUser, prePlan) => {
@@ -312,7 +313,6 @@ export default function App() {
           onOpenSupport={() => setIsHelpOpen(true)}
         />
         {isHelpOpen && <QuickHelpModal onClose={() => setIsHelpOpen(false)} />}
-        {isArchOpen && <TelecomArchModal onClose={() => setIsArchOpen(false)} />}
       </div>
     );
   }
@@ -333,7 +333,6 @@ export default function App() {
         onToggleTheme={handleToggleTheme}
         onLogout={handleLogout}
         onOpenSupport={() => setIsHelpOpen(true)}
-        onOpenArch={() => setIsArchOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -377,7 +376,6 @@ export default function App() {
             user={user}
             onLogout={handleLogout}
             onOpenSupport={() => setIsHelpOpen(true)}
-            onOpenArch={() => setIsArchOpen(true)}
             onOpenAgent={() => setIsAgentOpen(true)}
           />
         )}
@@ -412,10 +410,6 @@ export default function App() {
 
       {isHelpOpen && (
         <QuickHelpModal userPhone={user.phone} onClose={() => setIsHelpOpen(false)} />
-      )}
-
-      {isArchOpen && (
-        <TelecomArchModal onClose={() => setIsArchOpen(false)} />
       )}
 
       {isAgentOpen && (

@@ -34,68 +34,11 @@ const generateRef = (prefix: 'TP' | 'UN' | 'FP' | 'TR'): string => {
 };
 
 const createInitialAccount = (phone: string): UserAccount => {
-  const now = Date.now();
-  const dayMs = 86400000;
-  const ago = (days: number) => new Date(now - days * dayMs).toISOString();
-
-  const demoTx: Transaction[] = [
-    {
-      id: 'tx-1',
-      ref: 'FP' + (now - 86400000).toString().slice(-8),
-      date: ago(1),
-      kind: 'internet',
-      label: 'Pass c’chic 1,5 Go',
-      sub: prettyPhone(phone) + ' (MTN)',
-      phone,
-      amount: -1500,
-      provider: 'Solde RechargeMe',
-      operator: 'MTN',
-      status: 'success',
-    },
-    {
-      id: 'tx-2',
-      ref: 'UN' + (now - 172800000).toString().slice(-8),
-      date: ago(2),
-      kind: 'airtime',
-      label: 'Unités Orange',
-      sub: '07 08 09 10 11 (Orange)',
-      phone: '0708091011',
-      amount: -500,
-      provider: 'Solde RechargeMe',
-      operator: 'Orange',
-      status: 'success',
-    },
-    {
-      id: 'tx-3',
-      ref: 'FP' + (now - 345600000).toString().slice(-8),
-      date: ago(4),
-      kind: 'internet',
-      label: 'Internet 3 Jours',
-      sub: prettyPhone(phone) + ' (Moov)',
-      phone,
-      amount: -1000,
-      provider: 'Solde RechargeMe',
-      operator: 'Moov',
-      status: 'success',
-    },
-    {
-      id: 'tx-4',
-      ref: 'TP' + (now - 518400000).toString().slice(-8),
-      date: ago(6),
-      kind: 'in',
-      label: 'Recharge du compte',
-      sub: 'Wave Money',
-      amount: 10000,
-      provider: 'Wave',
-      status: 'success',
-    },
-  ];
-
   return {
     phone: digits(phone),
-    balance: 7000,
+    balance: 0,
     hideBalance: false,
-    tx: demoTx,
+    tx: [],
     createdAt: new Date().toISOString(),
   };
 };
@@ -552,27 +495,6 @@ export const API = {
     return { ok: true, ref };
   },
 
-  /**
-   * Consulter le statut des passerelles télécoms du backend
-   */
-  async getTelecomStatus() {
-    try {
-      const res = await fetch('/api/telecom/status');
-      if (res.ok) return await res.json();
-    } catch {
-      // Offline fallback
-    }
-    return {
-      status: 'ONLINE',
-      region: "Côte d'Ivoire (CI / 225)",
-      networks: {
-        Orange: { status: 'UP', latencyMs: 140, gatewayMode: 'API_DIRECT_B2B + SIM_GATEWAY_BACKUP' },
-        MTN: { status: 'UP', latencyMs: 180, gatewayMode: 'MTN_MOMO_OPENAPI + USSD_MASTER' },
-        Moov: { status: 'UP', latencyMs: 220, gatewayMode: 'MOOV_B2B_AGGREGATOR + SIM_SERVER' },
-      },
-    };
-  },
-
   getCurrentAccount(): UserAccount | null {
     return getStoredAccount();
   },
@@ -609,7 +531,7 @@ export const API = {
   },
 
   /**
-   * Espace Agent : Récupérer toutes les commandes à traiter dans les apps Max It / MoMo / Moov
+   * Espace Agent : Récupérer toutes les commandes clients reçues via Jeko
    */
   async getAgentOrders(): Promise<{ ok: boolean; orders: AgentOrder[]; pendingCount: number }> {
     try {
@@ -622,42 +544,10 @@ export const API = {
       // Fallback
     }
 
-    // Default mock fallback for preview
     return {
       ok: true,
-      orders: [
-        {
-          id: 'ord-1',
-          ref: 'FP82910482',
-          createdAt: new Date(Date.now() - 12 * 60000).toISOString(),
-          destPhone: '0708091011',
-          operator: 'Orange',
-          productType: 'internet',
-          planName: 'Pass spécial 1,5 Go',
-          planValid: '3 jours',
-          amount: 500,
-          payWith: 'Jeko (Wave)',
-          payerPhone: '0708091011',
-          status: 'DELIVERED',
-          deliveredAt: new Date(Date.now() - 10 * 60000).toISOString(),
-          deliveredBy: 'Orange Max It',
-        },
-        {
-          id: 'ord-2',
-          ref: 'FP91028374',
-          createdAt: new Date(Date.now() - 3 * 60000).toISOString(),
-          destPhone: '0501020304',
-          operator: 'MTN',
-          productType: 'internet',
-          planName: 'Pass c’chic 1,5 Go',
-          planValid: '3 jours',
-          amount: 500,
-          payWith: 'Jeko (MTN MoMo)',
-          payerPhone: '0501020304',
-          status: 'PENDING',
-        },
-      ],
-      pendingCount: 1,
+      orders: [],
+      pendingCount: 0,
     };
   },
 
@@ -714,31 +604,9 @@ export const API = {
     return {
       ok: true,
       webhookUrl: `${window.location.origin}/api/webhooks/jeko`,
-      storeId: '59ae202a-f583-4a15-970f-9e99bd1e0baa',
+      storeId: 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8',
       apiKeyMasked: 'jeko_4e6af8...7f0f6da',
     };
-  },
-
-  /**
-   * Simuler une notification Webhook Jeko avec HMAC-SHA256
-   */
-  async simulateJekoWebhook(params: {
-    destPhone: string;
-    planName: string;
-    amount: number;
-    paymentMethod: string;
-  }): Promise<{ ok: boolean; message: string; reference?: string }> {
-    try {
-      const res = await fetch('/api/jeko/simulate-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
-      });
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback
-    }
-    return { ok: true, message: 'Notification simulée avec succès' };
   },
 
   /**

@@ -34,8 +34,6 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
   const [tab, setTab] = useState<'pending' | 'delivered' | 'webhook'>('pending');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedWebhookUrl, setCopiedWebhookUrl] = useState(false);
-  const [simulating, setSimulating] = useState(false);
-  const [simFeedback, setSimFeedback] = useState<string | null>(null);
   const [jekoConfig, setJekoConfig] = useState<{ webhookUrl: string; storeId: string; apiKeyMasked: string } | null>(null);
 
   const fetchOrders = async () => {
@@ -89,23 +87,6 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
       setTimeout(() => setCopiedWebhookUrl(false), 2000);
     } catch {
       // Fallback
-    }
-  };
-
-  const handleSimulateWebhook = async (method: 'wave' | 'mtn_momo' | 'orange_money') => {
-    setSimulating(true);
-    setSimFeedback(null);
-    const res = await API.simulateJekoWebhook({
-      destPhone: method === 'wave' ? '0708091011' : method === 'mtn_momo' ? '0501020304' : '0701020304',
-      planName: method === 'wave' ? 'Pass spécial 1,5 Go' : method === 'mtn_momo' ? 'Pass c’chic 1,5 Go' : 'Pass Orange 2 Go',
-      amount: 500,
-      paymentMethod: method,
-    });
-    setSimulating(false);
-    if (res.ok) {
-      setSimFeedback('Notification reçue ! Signature HMAC-SHA256 validée et commande ajoutée.');
-      fetchOrders();
-      setTimeout(() => setSimFeedback(null), 5000);
     }
   };
 
@@ -317,7 +298,7 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase">Store ID</span>
                     <span className="font-mono font-bold text-slate-800 dark:text-zinc-200 text-[11px] truncate block">
-                      59ae202a...1e0baa
+                      {jekoConfig?.storeId ? `${jekoConfig.storeId.slice(0, 8)}...${jekoConfig.storeId.slice(-4)}` : 'd4365c1e...43c8'}
                     </span>
                   </div>
 
@@ -331,52 +312,21 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase">Secret Webhook</span>
                     <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11px] truncate block">
-                      3bbc5d7e...2e39 (HMAC)
+                      533e792a...fe7a (HMAC)
                     </span>
                   </div>
                 </div>
 
-                {/* Simulator Test Action */}
-                <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 space-y-3">
-                  <div>
-                    <h5 className="font-extrabold text-sm text-indigo-950 dark:text-indigo-100">
-                      Tester la réception du Webhook en direct
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <h5 className="font-extrabold text-sm text-emerald-950 dark:text-emerald-100">
+                      Webhook prêt pour la production
                     </h5>
-                    <p className="text-[11px] text-indigo-800/80 dark:text-indigo-300 mt-0.5">
-                      Ce test envoie une notification simulée signée avec votre secret HMAC-SHA256 réel pour vérifier que le traitement et l'affichage des commandes fonctionnent parfaitement.
-                    </p>
                   </div>
-
-                  {simFeedback && (
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                      <span>{simFeedback}</span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      disabled={simulating}
-                      onClick={() => handleSimulateWebhook('wave')}
-                      className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
-                    >
-                      <span>Simuler Wave (500 F)</span>
-                    </button>
-                    <button
-                      disabled={simulating}
-                      onClick={() => handleSimulateWebhook('mtn_momo')}
-                      className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
-                    >
-                      <span>Simuler MTN MoMo (500 F)</span>
-                    </button>
-                    <button
-                      disabled={simulating}
-                      onClick={() => handleSimulateWebhook('orange_money')}
-                      className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
-                    >
-                      <span>Simuler Orange Money (500 F)</span>
-                    </button>
-                  </div>
+                  <p className="text-[11px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                    Dès qu'un client paie sur Jeko (Wave, Orange, MTN ou Moov), la commande apparaît instantanément dans l'onglet <strong>« À traiter »</strong> ci-dessus avec son numéro et le nom du pass choisi.
+                  </p>
                 </div>
               </div>
             )}

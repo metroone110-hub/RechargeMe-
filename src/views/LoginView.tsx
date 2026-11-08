@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Loader2,
   ArrowRight,
@@ -9,8 +9,6 @@ import {
   Wifi,
   PhoneCall,
   Search,
-  Sparkles,
-  ExternalLink,
 } from 'lucide-react';
 import {
   digits,
@@ -34,8 +32,9 @@ interface LoginViewProps {
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupport }) => {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   // Landing catalog explorer state
   const [selectedOp, setSelectedOp] = useState<Operator>('Orange');
@@ -63,20 +62,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
     setLoading(false);
 
     if (res.ok && res.user) {
-      onLoginSuccess(res.user);
+      onLoginSuccess(res.user, pendingPlan || undefined);
     } else {
       setError(res.error || 'Impossible de se connecter.');
     }
   };
 
-  // Instant 1-click demo login for reviewers and auditors (like DEX Pay)
-  const handleDemoLogin = async (prePlan?: Plan) => {
-    setDemoLoading(true);
-    const demoPhone = prePlan ? (prePlan.operator === 'MTN' ? '0501020304' : prePlan.operator === 'Moov' ? '0102030405' : '0708091011') : '0708091011';
-    const res = await API.login(demoPhone);
-    setDemoLoading(false);
-    if (res.ok && res.user) {
-      onLoginSuccess(res.user, prePlan);
+  const handleSelectLandingPlan = async (plan: Plan) => {
+    if (isComplete) {
+      setLoading(true);
+      const res = await API.login(clean);
+      setLoading(false);
+      if (res.ok && res.user) {
+        onLoginSuccess(res.user, plan);
+      } else {
+        setError(res.error || 'Erreur lors de la connexion.');
+      }
+    } else {
+      setPendingPlan(plan);
+      phoneInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      phoneInputRef.current?.focus();
+      setError(`Entrez votre numéro ${plan.operator} ci-dessus pour activer ce pass (${plan.name}).`);
     }
   };
 
@@ -98,24 +104,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
 
   return (
     <div className="min-h-screen flex flex-col justify-between max-w-4xl mx-auto px-4 py-8">
-      {/* Top Banner for DEX Pay / Reviewers */}
-      <div className="mb-6 p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200 text-center sm:text-left">
-          <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-          <span>
-            <strong>Visiteur ou Partenaire (DEX Pay) ?</strong> Vous pouvez tester la cabine et les offres en 1 clic sans inscription.
-          </span>
-        </div>
-        <button
-          onClick={() => handleDemoLogin()}
-          disabled={demoLoading}
-          className="shrink-0 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-xs"
-        >
-          {demoLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
-          <span>Accéder en mode Démo</span>
-        </button>
-      </div>
-
       {/* Login Card Header */}
       <div className="max-w-md mx-auto w-full pt-2 pb-6">
         <div className="flex items-center justify-between mb-6">
@@ -170,6 +158,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
             </label>
             <div className="relative">
               <input
+                ref={phoneInputRef}
                 id="login-phone"
                 type="tel"
                 inputMode="numeric"
@@ -210,7 +199,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+            <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 text-xs font-medium border border-indigo-200 dark:border-indigo-900/60">
               {error}
             </div>
           )}
@@ -231,17 +220,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
-          </button>
-
-          {/* Quick Demo Access Button */}
-          <button
-            type="button"
-            onClick={() => handleDemoLogin()}
-            disabled={demoLoading}
-            className="w-full min-h-[44px] rounded-2xl border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-zinc-800/60 active:scale-95 transition-all"
-          >
-            {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-500" />}
-            <span>Ou tester la démo avec 7 000 F CFA de solde</span>
           </button>
         </form>
       </div>
@@ -347,7 +325,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenSupp
               </div>
 
               <button
-                onClick={() => handleDemoLogin(plan)}
+                onClick={() => handleSelectLandingPlan(plan)}
                 className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-zinc-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-98"
               >
                 <span>Prendre ce pass</span>
