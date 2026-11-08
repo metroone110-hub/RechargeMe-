@@ -162,13 +162,10 @@ export default function App() {
           refreshUser();
           setConfirmData(null);
 
-          // Si redirection vers la page de paiement sécurisée Jeko
+          // Redirection directe vers la page de paiement sécurisée Jeko
           if (res.redirectUrl && provider !== 'Solde RechargeMe') {
-            try {
-              window.open(res.redirectUrl, '_blank');
-            } catch {
-              // Ignorer si popup bloquée, le bouton dans le reçu prend le relais
-            }
+            window.location.href = res.redirectUrl;
+            return;
           }
 
           setReceiptData({

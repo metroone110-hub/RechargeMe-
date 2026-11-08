@@ -28,9 +28,12 @@ app.use(
    ========================================================================== */
 const JEKO_API_KEY =
   process.env.JEKO_API_KEY || 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da';
+const JEKO_API_KEY_ID =
+  process.env.JEKO_API_KEY_ID || 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8';
+const JEKO_STORE_ID =
+  process.env.JEKO_STORE_ID || '6ff18bfb-e467-4896-9502-dd7db9f02c9b';
 const JEKO_WEBHOOK_SECRET =
   process.env.JEKO_WEBHOOK_SECRET || '533e792aaaf1369cec78cdcda70d3abcce36d40fd34cfdb6df088e4323a4fe7a';
-const JEKO_STORE_ID = process.env.JEKO_STORE_ID || 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8';
 const JEKO_API_BASE = 'https://api.jeko.africa/partner_api';
 
 // Types & Data Structures
@@ -165,6 +168,7 @@ app.get('/api/jeko/config', (req: Request, res: Response) => {
     ok: true,
     storeId: JEKO_STORE_ID,
     apiKeyMasked: `${JEKO_API_KEY.slice(0, 10)}...${JEKO_API_KEY.slice(-6)}`,
+    apiKeyIdMasked: `${JEKO_API_KEY_ID.slice(0, 8)}...${JEKO_API_KEY_ID.slice(-4)}`,
     webhookUrl,
     hasWebhookSecret: Boolean(JEKO_WEBHOOK_SECRET),
   });
@@ -288,7 +292,7 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
       method: 'POST',
       headers: {
         'X-API-KEY': JEKO_API_KEY,
-        'X-API-KEY-ID': JEKO_API_KEY,
+        'X-API-KEY-ID': JEKO_API_KEY_ID,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(jekoPayload),
@@ -312,36 +316,17 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
       });
     }
 
-    // Si Jeko a renvoyé une erreur (ex: store ID ou mode test)
-    console.warn(`[JEKO API WARNING] Non-200 or no redirectUrl from Jeko:`, jekoData);
-
-    // Si l'appel a échoué côté Jeko (ex: clé en cours d'approbation ou format storeId),
-    // on fournit une URL de secours et un message clair pour permettre au créateur de tester l'app sans blocage
-    const fallbackRedirect = `https://pay.jeko.africa/pay_request/pr/${ref}`;
-    orderRecord.jekoRedirectUrl = fallbackRedirect;
-
-    return res.json({
-      ok: true,
-      ref,
-      warning: jekoData.message || 'Jeko en attente de validation boutique',
-      redirectUrl: fallbackRedirect,
-      paymentRequestId: ref,
-      method: jekoMethod,
-      amount: numAmount,
-      isSimulatedPaymentUrl: true,
+    console.error(`[JEKO API ERROR] Non-200 from Jeko:`, jekoData);
+    return res.status(jekoRes.status || 400).json({
+      ok: false,
+      error: jekoData.message || 'Erreur lors de la création du paiement Jeko.',
     });
   } catch (err: any) {
     console.error(`[JEKO API ERROR] Connection failure:`, err.message);
 
-    return res.json({
-      ok: true,
-      ref,
-      warning: `Erreur de connexion Jeko : ${err.message}. Mode simulation actif.`,
-      redirectUrl: `https://pay.jeko.africa/pay_request/pr/${ref}`,
-      paymentRequestId: ref,
-      method: jekoMethod,
-      amount: numAmount,
-      isSimulatedPaymentUrl: true,
+    return res.status(500).json({
+      ok: false,
+      error: `Erreur de connexion Jeko : ${err.message}`,
     });
   }
 });
@@ -363,7 +348,7 @@ app.get('/api/jeko/payment-status/:ref', async (req: Request, res: Response) => 
       const checkRes = await fetch(`${JEKO_API_BASE}/payment_requests/${order.jekoId}`, {
         headers: {
           'X-API-KEY': JEKO_API_KEY,
-          'X-API-KEY-ID': JEKO_API_KEY,
+          'X-API-KEY-ID': JEKO_API_KEY_ID,
         },
       });
       if (checkRes.ok) {

@@ -294,11 +294,18 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
                 </div>
 
                 {/* Active Credentials Badges */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Store ID</span>
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Boutique (Store)</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-zinc-200 text-[11px] truncate block" title={jekoConfig?.storeId || '6ff18bfb-e467-4896-9502-dd7db9f02c9b'}>
+                      {jekoConfig?.storeId ? `${jekoConfig.storeId.slice(0, 8)}...${jekoConfig.storeId.slice(-4)}` : '6ff18bfb...2c9b'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Key ID</span>
                     <span className="font-mono font-bold text-slate-800 dark:text-zinc-200 text-[11px] truncate block">
-                      {jekoConfig?.storeId ? `${jekoConfig.storeId.slice(0, 8)}...${jekoConfig.storeId.slice(-4)}` : 'd4365c1e...43c8'}
+                      d4365c1e...43c8
                     </span>
                   </div>
 

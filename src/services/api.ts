@@ -194,8 +194,9 @@ export const API = {
           }),
         });
 
-        if (jekoRes.ok) {
-          const jekoData = await jekoRes.json();
+        const jekoData = await jekoRes.json().catch(() => ({}));
+
+        if (jekoRes.ok && jekoData.redirectUrl) {
           if (account) {
             account.tx.unshift({
               id: `tx-${Date.now()}`,
@@ -217,9 +218,19 @@ export const API = {
             ref: jekoData.ref,
             redirectUrl: jekoData.redirectUrl,
           };
+        } else {
+          return {
+            ok: false,
+            ref: '',
+            error: jekoData.error || jekoData.message || 'Impossible d’initier le paiement Jeko. Veuillez réessayer.',
+          };
         }
-      } catch (err) {
-        console.warn('Jeko API call failed, falling back:', err);
+      } catch (err: any) {
+        return {
+          ok: false,
+          ref: '',
+          error: `Erreur de connexion Jeko : ${err.message}`,
+        };
       }
     }
 
@@ -332,8 +343,9 @@ export const API = {
           }),
         });
 
-        if (jekoRes.ok) {
-          const jekoData = await jekoRes.json();
+        const jekoData = await jekoRes.json().catch(() => ({}));
+
+        if (jekoRes.ok && jekoData.redirectUrl) {
           if (account) {
             account.tx.unshift({
               id: `tx-${Date.now()}`,
@@ -355,9 +367,19 @@ export const API = {
             ref: jekoData.ref,
             redirectUrl: jekoData.redirectUrl,
           };
+        } else {
+          return {
+            ok: false,
+            ref: '',
+            error: jekoData.error || jekoData.message || 'Impossible d’initier le paiement Jeko. Veuillez réessayer.',
+          };
         }
-      } catch (err) {
-        console.warn('Jeko API call failed, falling back:', err);
+      } catch (err: any) {
+        return {
+          ok: false,
+          ref: '',
+          error: `Erreur de connexion Jeko : ${err.message}`,
+        };
       }
     }
 
