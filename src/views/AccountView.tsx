@@ -10,7 +10,6 @@ interface AccountViewProps {
   onLogout: () => void;
   onOpenSupport: () => void;
   onOpenAgent?: () => void;
-  onOpenSecret?: () => void;
 }
 
 const FAQ_ITEMS = [
@@ -41,7 +40,6 @@ export const AccountView: React.FC<AccountViewProps> = ({
   onLogout,
   onOpenSupport,
   onOpenAgent,
-  onOpenSecret,
 }) => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const operator = getOperator(user.phone) || 'Orange';
@@ -202,27 +200,17 @@ export const AccountView: React.FC<AccountViewProps> = ({
           <span>Se déconnecter</span>
         </button>
 
-        <div className="flex flex-col items-center justify-center gap-2 pt-2">
-          {onOpenSecret && (
-            <button
-              type="button"
-              onClick={onOpenSecret}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors inline-flex items-center gap-1.5 py-1 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60"
-            >
-              <span>🔐 Coin Secret Jeko (Clés API & Magasins)</span>
-            </button>
-          )}
-
-          {onOpenAgent && (
+        {onOpenAgent && (
+          <div className="text-center pt-2">
             <button
               type="button"
               onClick={onOpenAgent}
               className="text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-flex items-center gap-1"
             >
-              <span>Accès Espace Agent & Dispatch (PIN)</span>
+              <span>Accès Espace Agent & Dispatch</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

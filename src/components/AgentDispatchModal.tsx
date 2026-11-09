@@ -20,10 +20,9 @@ import { OperatorLogo } from '../data/logos';
 
 interface AgentDispatchModalProps {
   onClose: () => void;
-  onOpenSecret?: () => void;
 }
 
-export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose, onOpenSecret }) => {
+export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem('rechargeme_agent_auth') === 'true';
   });
@@ -32,10 +31,8 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
 
   const [orders, setOrders] = useState<AgentOrder[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'pending' | 'delivered' | 'webhook'>('pending');
+  const [tab, setTab] = useState<'pending' | 'delivered'>('pending');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [copiedWebhookUrl, setCopiedWebhookUrl] = useState(false);
-  const [jekoConfig, setJekoConfig] = useState<{ webhookUrl: string; storeId: string; apiKeyMasked: string } | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -49,9 +46,6 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
   useEffect(() => {
     if (isAuthenticated) {
       fetchOrders();
-      API.getJekoConfig().then((cfg) => {
-        if (cfg.ok) setJekoConfig(cfg);
-      });
       // Poll every 8 seconds for new incoming orders
       const interval = setInterval(fetchOrders, 8000);
       return () => clearInterval(interval);
@@ -66,7 +60,7 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
       setIsAuthenticated(true);
       sessionStorage.setItem('rechargeme_agent_auth', 'true');
     } else {
-      setAuthError('Code PIN invalide (par défaut : 2026)');
+      setAuthError('Code PIN invalide.');
     }
   };
 
@@ -75,17 +69,6 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
       await navigator.clipboard.writeText(phone);
       setCopiedId(orderId);
       setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      // Fallback
-    }
-  };
-
-  const handleCopyWebhookUrl = async () => {
-    const url = jekoConfig?.webhookUrl || `${window.location.origin}/api/webhooks/jeko`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedWebhookUrl(true);
-      setTimeout(() => setCopiedWebhookUrl(false), 2000);
     } catch {
       // Fallback
     }
@@ -149,7 +132,7 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
                 Accès réservé aux agents
               </h4>
               <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-                Entrez votre code PIN secret (code par défaut : <strong>2026</strong>)
+                Entrez votre code PIN secret d'administrateur.
               </p>
             </div>
 
@@ -230,17 +213,6 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
                 >
                   Historique ({deliveredOrders.length})
                 </button>
-                <button
-                  onClick={() => setTab('webhook')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                    tab === 'webhook'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-indigo-600 dark:text-indigo-400'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Webhook Jeko</span>
-                </button>
               </div>
 
               <button
@@ -253,107 +225,7 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
               </button>
             </div>
 
-            {/* Tab: Webhook & Jeko Config */}
-            {tab === 'webhook' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Webhook URL Box to copy */}
-                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-lg border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-300">
-                      URL Webhook à insérer sur Jeko (business.jeko.africa)
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      Serveur Direct Actif
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2">
-                    <code className="text-xs text-indigo-300 font-mono break-all select-all">
-                      {jekoConfig?.webhookUrl || `${window.location.origin}/api/webhooks/jeko`}
-                    </code>
-                    <button
-                      onClick={handleCopyWebhookUrl}
-                      className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all active:scale-95"
-                    >
-                      {copiedWebhookUrl ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>Copié !</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copier l'URL</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Copiez cette URL et collez-la dans votre tableau de bord Jeko. Notre serveur traite les requêtes GET (pour la validation d'URL) et POST (pour les notifications de paiement avec signature HMAC-SHA256).
-                  </p>
-                </div>
-
-                {/* Active Credentials Badges */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Boutique (Store)</span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-zinc-200 text-[11px] truncate block" title={jekoConfig?.storeId || '895f3110-845b-4d11-a291-f28dc954c0cd'}>
-                      {jekoConfig?.storeId ? `${jekoConfig.storeId.slice(0, 8)}...${jekoConfig.storeId.slice(-4)}` : '895f3110...c0cd'}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Key ID</span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-zinc-200 text-[11px] truncate block">
-                      d4365c1e...43c8
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Clé API</span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-zinc-200 text-[11px] truncate block">
-                      jeko_4e6af8...7f0f6da
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Secret Webhook</span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11px] truncate block">
-                      3bbc5d7e...2e39 (HMAC)
-                    </span>
-                  </div>
-                </div>
-
-                {onOpenSecret && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenSecret();
-                    }}
-                    className="w-full min-h-[46px] rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all"
-                  >
-                    <span>🔐 Ouvrir le Coin Secret (Modifier les clés API & Tester en direct)</span>
-                  </button>
-                )}
-
-                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <h5 className="font-extrabold text-sm text-emerald-950 dark:text-emerald-100">
-                      Webhook prêt pour la production
-                    </h5>
-                  </div>
-                  <p className="text-[11px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
-                    Dès qu'un client paie sur Jeko (Wave, Orange, MTN ou Moov), la commande apparaît instantanément dans l'onglet <strong>« À traiter »</strong> ci-dessus avec son numéro et le nom du pass choisi.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Orders Feed */}
-            {tab !== 'webhook' && (
             <div className="space-y-3">
               {(tab === 'pending' ? pendingOrders : deliveredOrders).length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-400 bg-slate-50 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800">
@@ -460,7 +332,6 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose,
                 })
               )}
             </div>
-            )}
 
             {/* Quick Helper Tips */}
             <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60 text-xs text-indigo-900 dark:text-indigo-200 space-y-1">

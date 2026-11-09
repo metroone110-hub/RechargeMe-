@@ -7,7 +7,6 @@ import { ReceiptModal, ReceiptRow } from './components/ReceiptModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { QuickHelpModal } from './components/QuickHelpModal';
 import { AgentDispatchModal } from './components/AgentDispatchModal';
-import { SecretConfigModal } from './components/SecretConfigModal';
 import { LoginView } from './views/LoginView';
 import { HomeView } from './views/HomeView';
 import { BuyView } from './views/BuyView';
@@ -43,7 +42,6 @@ export default function App() {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isAgentOpen, setIsAgentOpen] = useState(false);
-  const [isSecretOpen, setIsSecretOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync theme on mount and check payment callback params
@@ -390,7 +388,6 @@ export default function App() {
             onLogout={handleLogout}
             onOpenSupport={() => setIsHelpOpen(true)}
             onOpenAgent={() => setIsAgentOpen(true)}
-            onOpenSecret={() => setIsSecretOpen(true)}
           />
         )}
       </main>
@@ -429,12 +426,7 @@ export default function App() {
       {isAgentOpen && (
         <AgentDispatchModal
           onClose={() => setIsAgentOpen(false)}
-          onOpenSecret={() => setIsSecretOpen(true)}
         />
-      )}
-
-      {isSecretOpen && (
-        <SecretConfigModal onClose={() => setIsSecretOpen(false)} />
       )}
     </div>
   );

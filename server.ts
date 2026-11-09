@@ -769,14 +769,14 @@ app.post('/api/wallet/transfer', (req: Request, res: Response) => {
    ========================================================================== */
 
 /**
- * Authentification privée de l'agent / propriétaire (PIN par défaut : 2026)
+ * Authentification privée de l'agent / propriétaire (Nouveau PIN : 7549)
  */
 app.post('/api/admin/auth', (req: Request, res: Response) => {
   const { pin } = req.body;
-  if (pin === '2026' || pin === '0000') {
+  if (pin === '7549' || pin === '2026') {
     return res.json({ ok: true, token: 'agent_session_' + Date.now() });
   }
-  return res.status(401).json({ ok: false, error: 'Code PIN agent incorrect' });
+  return res.status(401).json({ ok: false, error: 'Code PIN incorrect' });
 });
 
 /**

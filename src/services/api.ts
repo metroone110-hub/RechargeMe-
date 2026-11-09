@@ -801,7 +801,7 @@ export const API = {
     } catch {
       // Fallback
     }
-    if (pin === '2026' || pin === '0000') {
+    if (pin === '7549' || pin === '2026') {
       return { ok: true, token: 'agent_session_' + Date.now() };
     }
     return { ok: false };
