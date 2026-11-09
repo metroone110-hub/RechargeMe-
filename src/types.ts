@@ -62,6 +62,9 @@ export interface AgentOrder {
   payWith: string;
   payerPhone?: string;
   status: OrderStatus;
+  paymentStatus?: 'PAID' | 'AWAITING_PAYMENT' | 'FAILED';
+  jekoId?: string;
+  jekoRedirectUrl?: string;
   deliveredAt?: string;
   deliveredBy?: string;
 }

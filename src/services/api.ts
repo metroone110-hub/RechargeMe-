@@ -1,8 +1,60 @@
 import { Operator, PaymentProvider, Plan, PlanKind, Transaction, UserAccount, AgentOrder } from '../types';
-import { getCatalogPlans, digits, prettyPhone } from '../data/catalog';
+import { getCatalogPlans, digits, prettyPhone, getOperator } from '../data/catalog';
 
 const STORAGE_KEY = 'rechargeme_v2';
 const THEME_KEY = 'rechargeme_theme';
+const JEKO_CONFIG_KEY = 'rechargeme_jeko_cfg';
+const ORDERS_STORAGE_KEY = 'rechargeme_local_orders';
+
+export interface StoredJekoConfig {
+  storeId: string;
+  apiKeyId: string;
+  apiKey: string;
+  webhookSecret: string;
+}
+
+const DEFAULT_JEKO_CONFIG: StoredJekoConfig = {
+  storeId: '895f3110-845b-4d11-a291-f28dc954c0cd',
+  apiKeyId: 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8',
+  apiKey: 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da',
+  webhookSecret: '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
+};
+
+const getStoredJekoConfig = (): StoredJekoConfig => {
+  try {
+    const raw = localStorage.getItem(JEKO_CONFIG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT_JEKO_CONFIG, ...parsed };
+    }
+  } catch {}
+  return DEFAULT_JEKO_CONFIG;
+};
+
+const saveStoredJekoConfig = (cfg: Partial<StoredJekoConfig>) => {
+  try {
+    const current = getStoredJekoConfig();
+    const updated = { ...current, ...cfg };
+    localStorage.setItem(JEKO_CONFIG_KEY, JSON.stringify(updated));
+  } catch {}
+};
+
+const getStoredOrders = (): AgentOrder[] => {
+  try {
+    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalAgentOrder = (order: AgentOrder) => {
+  try {
+    const list = getStoredOrders();
+    list.unshift(order);
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(list.slice(0, 50)));
+  } catch {}
+};
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -42,6 +94,153 @@ const createInitialAccount = (phone: string): UserAccount => {
     createdAt: new Date().toISOString(),
   };
 };
+
+/**
+ * Exécute la création de paiement Jeko :
+ * 1. Tente d'abord le proxy serveur (/api/jeko/create-payment)
+ * 2. Si le backend est indisponible ou s'il s'agit d'un hébergement statique (Cloudflare Workers 405),
+ *    appelle DIRECTEMENT l'API partenaire Jèko avec support CORS officiel.
+ */
+async function requestJekoPayment({
+  orderType,
+  destPhone,
+  amount,
+  provider,
+  payerPhone,
+  userPhone,
+  plan,
+}: {
+  orderType: 'airtime' | 'plan';
+  destPhone: string;
+  amount: number;
+  provider: string;
+  payerPhone?: string;
+  userPhone?: string;
+  plan?: Plan;
+}): Promise<{ ok: boolean; ref: string; redirectUrl?: string; error?: string }> {
+  // 1. Tenter le proxy Express s'il est disponible
+  try {
+    const res = await fetch('/api/jeko/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderType,
+        destPhone,
+        amount,
+        provider,
+        payerPhone,
+        userPhone,
+        plan,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && data.redirectUrl) {
+        return { ok: true, ref: data.ref, redirectUrl: data.redirectUrl };
+      }
+      if (data.error) {
+        return { ok: false, ref: '', error: data.error };
+      }
+    } else if (res.status === 400 || res.status === 422) {
+      const data = await res.json().catch(() => null);
+      if (data && (data.error || data.message)) {
+        return { ok: false, ref: '', error: data.error || data.message };
+      }
+    }
+  } catch (err) {
+    console.warn('Backend /api/jeko indisponible, passage au client direct Jeko...', err);
+  }
+
+  // 2. Appel direct à l'API Jeko (supporte CORS nativement)
+  try {
+    const activeConfig = getStoredJekoConfig();
+    const cleanDest = digits(destPhone);
+    const cleanPayer = digits(payerPhone || userPhone || destPhone);
+    const operator = getOperator(cleanDest) || 'Orange';
+    const ref = generateRef(orderType === 'airtime' ? 'UN' : 'FP');
+
+    let jekoMethod: 'wave' | 'orange' | 'mtn' | 'moov' | 'djamo' | 'jeko' = 'wave';
+    const pLower = (provider || '').toLowerCase();
+    if (pLower.includes('orange')) jekoMethod = 'orange';
+    else if (pLower.includes('mtn')) jekoMethod = 'mtn';
+    else if (pLower.includes('moov')) jekoMethod = 'moov';
+    else if (pLower.includes('djamo')) jekoMethod = 'djamo';
+    else if (pLower.includes('jeko')) jekoMethod = 'jeko';
+    else jekoMethod = 'wave';
+
+    const origin = window.location.origin.startsWith('https://')
+      ? window.location.origin
+      : 'https://ais-dev-yr6sg7ssvekvsfgy45mxse-963745823961.europe-west2.run.app';
+
+    const successUrl = `${origin}/?payment=success&reference=${ref}&order=${ref}&dest=${cleanDest}`;
+    const errorUrl = `${origin}/?payment=error&reference=${ref}&order=${ref}`;
+
+    const jekoRes = await fetch('https://api.jeko.africa/partner_api/payment_requests', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': activeConfig.apiKey,
+        'X-API-KEY-ID': activeConfig.apiKeyId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        storeId: activeConfig.storeId,
+        amountCents: amount * 100,
+        currency: 'XOF',
+        reference: ref,
+        paymentDetails: {
+          type: 'redirect',
+          data: {
+            paymentMethod: jekoMethod,
+            successUrl,
+            errorUrl,
+          },
+        },
+      }),
+    });
+
+    const jekoData = await jekoRes.json().catch(() => ({}));
+
+    if (jekoRes.ok && jekoData.redirectUrl) {
+      saveLocalAgentOrder({
+        id: `ord-direct-${Date.now()}`,
+        ref,
+        createdAt: new Date().toISOString(),
+        destPhone: cleanDest,
+        operator: operator as any,
+        productType: orderType === 'airtime' ? 'airtime' : plan?.kind || 'internet',
+        planName: plan?.name || (orderType === 'airtime' ? `Unités ${operator} (${amount} F)` : 'Pass Télécom'),
+        planValid: plan?.valid,
+        amount,
+        payWith: `Jeko (${provider || 'Wave'})`,
+        payerPhone: cleanPayer,
+        status: 'PENDING',
+        paymentStatus: 'AWAITING_PAYMENT',
+        jekoId: jekoData.id,
+        jekoRedirectUrl: jekoData.redirectUrl,
+      });
+
+      return {
+        ok: true,
+        ref,
+        redirectUrl: jekoData.redirectUrl,
+      };
+    }
+
+    const err =
+      jekoData.errors?.map((e: any) => e.message).join(', ') ||
+      jekoData.message ||
+      (jekoRes.status === 401 ? 'Clé API Jeko non autorisée ou invalide.' : 'Erreur lors de la création du paiement Jeko.');
+
+    return { ok: false, ref: '', error: err };
+  } catch (directErr: any) {
+    return {
+      ok: false,
+      ref: '',
+      error: `Erreur de connexion Jeko : ${directErr.message}`,
+    };
+  }
+}
 
 /**
  * RECHARGEME API CLIENT
@@ -180,56 +379,42 @@ export const API = {
 
     // Si paiement via Jeko (Wave, Orange Money, MTN Money, Moov Money)
     if (payWith !== 'Solde RechargeMe') {
-      try {
-        const jekoRes = await fetch('/api/jeko/create-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderType: 'airtime',
-            destPhone: phone,
-            amount,
+      const jekoRes = await requestJekoPayment({
+        orderType: 'airtime',
+        destPhone: phone,
+        amount,
+        provider: payWith,
+        payerPhone: payer,
+        userPhone: account?.phone,
+      });
+
+      if (jekoRes.ok && jekoRes.redirectUrl) {
+        if (account) {
+          account.tx.unshift({
+            id: `tx-${Date.now()}`,
+            ref: jekoRes.ref,
+            date: new Date().toISOString(),
+            kind: 'airtime',
+            label: `Unités ${operator}`,
+            sub: `${prettyPhone(phone)} (${payWith})`,
+            phone: digits(phone),
+            amount: -amount,
             provider: payWith,
-            payerPhone: payer,
-            userPhone: account?.phone,
-          }),
-        });
-
-        const jekoData = await jekoRes.json().catch(() => ({}));
-
-        if (jekoRes.ok && jekoData.redirectUrl) {
-          if (account) {
-            account.tx.unshift({
-              id: `tx-${Date.now()}`,
-              ref: jekoData.ref,
-              date: new Date().toISOString(),
-              kind: 'airtime',
-              label: `Unités ${operator}`,
-              sub: `${prettyPhone(phone)} (${payWith})`,
-              phone: digits(phone),
-              amount: -amount,
-              provider: payWith,
-              operator,
-              status: 'pending',
-            });
-            saveAccount(account);
-          }
-          return {
-            ok: true,
-            ref: jekoData.ref,
-            redirectUrl: jekoData.redirectUrl,
-          };
-        } else {
-          return {
-            ok: false,
-            ref: '',
-            error: jekoData.error || jekoData.message || 'Impossible d’initier le paiement Jeko. Veuillez réessayer.',
-          };
+            operator,
+            status: 'pending',
+          });
+          saveAccount(account);
         }
-      } catch (err: any) {
+        return {
+          ok: true,
+          ref: jekoRes.ref,
+          redirectUrl: jekoRes.redirectUrl,
+        };
+      } else {
         return {
           ok: false,
           ref: '',
-          error: `Erreur de connexion Jeko : ${err.message}`,
+          error: jekoRes.error || 'Impossible d’initier le paiement Jeko. Veuillez réessayer.',
         };
       }
     }
@@ -328,57 +513,43 @@ export const API = {
 
     // Si paiement via Jeko (Wave, Orange Money, MTN Money, Moov Money)
     if (payWith !== 'Solde RechargeMe') {
-      try {
-        const jekoRes = await fetch('/api/jeko/create-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderType: 'plan',
-            destPhone: phone,
-            amount: plan.price,
+      const jekoRes = await requestJekoPayment({
+        orderType: 'plan',
+        destPhone: phone,
+        amount: plan.price,
+        provider: payWith,
+        payerPhone: payer,
+        userPhone: account?.phone,
+        plan,
+      });
+
+      if (jekoRes.ok && jekoRes.redirectUrl) {
+        if (account) {
+          account.tx.unshift({
+            id: `tx-${Date.now()}`,
+            ref: jekoRes.ref,
+            date: new Date().toISOString(),
+            kind: plan.kind,
+            label: plan.name,
+            sub: `${prettyPhone(phone)} (${payWith})`,
+            phone: digits(phone),
+            amount: -plan.price,
             provider: payWith,
-            payerPhone: payer,
-            userPhone: account?.phone,
-            plan,
-          }),
-        });
-
-        const jekoData = await jekoRes.json().catch(() => ({}));
-
-        if (jekoRes.ok && jekoData.redirectUrl) {
-          if (account) {
-            account.tx.unshift({
-              id: `tx-${Date.now()}`,
-              ref: jekoData.ref,
-              date: new Date().toISOString(),
-              kind: plan.kind,
-              label: plan.name,
-              sub: `${prettyPhone(phone)} (${payWith})`,
-              phone: digits(phone),
-              amount: -plan.price,
-              provider: payWith,
-              operator,
-              status: 'pending',
-            });
-            saveAccount(account);
-          }
-          return {
-            ok: true,
-            ref: jekoData.ref,
-            redirectUrl: jekoData.redirectUrl,
-          };
-        } else {
-          return {
-            ok: false,
-            ref: '',
-            error: jekoData.error || jekoData.message || 'Impossible d’initier le paiement Jeko. Veuillez réessayer.',
-          };
+            operator,
+            status: 'pending',
+          });
+          saveAccount(account);
         }
-      } catch (err: any) {
+        return {
+          ok: true,
+          ref: jekoRes.ref,
+          redirectUrl: jekoRes.redirectUrl,
+        };
+      } else {
         return {
           ok: false,
           ref: '',
-          error: `Erreur de connexion Jeko : ${err.message}`,
+          error: jekoRes.error || 'Impossible d’initier le paiement Jeko. Veuillez réessayer.',
         };
       }
     }
@@ -556,20 +727,33 @@ export const API = {
    * Espace Agent : Récupérer toutes les commandes clients reçues via Jeko
    */
   async getAgentOrders(): Promise<{ ok: boolean; orders: AgentOrder[]; pendingCount: number }> {
+    let serverOrders: AgentOrder[] = [];
     try {
       const res = await fetch('/api/admin/orders');
       if (res.ok) {
         const data = await res.json();
-        return { ok: true, orders: data.orders, pendingCount: data.pendingCount };
+        serverOrders = data.orders || [];
       }
     } catch {
       // Fallback
     }
 
+    const localOrders = getStoredOrders();
+    const seen = new Set<string>();
+    const combined: AgentOrder[] = [];
+    for (const ord of [...serverOrders, ...localOrders]) {
+      const key = ord.ref || ord.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(ord);
+      }
+    }
+
+    const pendingCount = combined.filter((o) => o.status === 'PENDING').length;
     return {
       ok: true,
-      orders: [],
-      pendingCount: 0,
+      orders: combined,
+      pendingCount,
     };
   },
 
@@ -577,6 +761,16 @@ export const API = {
    * L'agent marque la commande comme délivrée / souscrite
    */
   async deliverAgentOrder(orderId: string, deliveredBy?: string): Promise<{ ok: boolean }> {
+    // Update local storage
+    const local = getStoredOrders();
+    const target = local.find((o) => o.id === orderId || o.ref === orderId);
+    if (target) {
+      target.status = 'DELIVERED';
+      target.deliveredAt = new Date().toISOString();
+      target.deliveredBy = deliveredBy || 'Agent RechargeMe';
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(local));
+    }
+
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/deliver`, {
         method: 'PATCH',
@@ -625,18 +819,26 @@ export const API = {
     webhookUrl: string;
     appOrigin?: string;
   }> {
+    const local = getStoredJekoConfig();
     try {
       const res = await fetch('/api/jeko/config');
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          ok: true,
+          storeId: data.storeId || local.storeId,
+          apiKeyId: data.apiKeyId || local.apiKeyId,
+          apiKey: data.apiKey || local.apiKey,
+          webhookSecret: data.webhookSecret || local.webhookSecret,
+          webhookUrl: data.webhookUrl || `${window.location.origin}/api/webhooks/jeko`,
+        };
+      }
     } catch {
       // Fallback
     }
     return {
       ok: true,
-      storeId: '895f3110-845b-4d11-a291-f28dc954c0cd',
-      apiKeyId: 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8',
-      apiKey: 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da',
-      webhookSecret: '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
+      ...local,
       webhookUrl: `${window.location.origin}/api/webhooks/jeko`,
     };
   },
@@ -650,17 +852,21 @@ export const API = {
     apiKey: string;
     webhookSecret: string;
   }): Promise<{ ok: boolean; message?: string; error?: string }> {
+    saveStoredJekoConfig(config);
     try {
       const res = await fetch('/api/jeko/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
-      const data = await res.json();
-      return data;
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
     } catch (err: any) {
-      return { ok: false, error: err.message };
+      // Offline / static hosting success
     }
+    return { ok: true, message: 'Configuration enregistrée et activée avec succès !' };
   },
 
   /**
@@ -680,16 +886,88 @@ export const API = {
     redirectUrl?: string;
     payStatus?: number;
   }> {
+    // 1. Tenter le test via le serveur
     try {
       const res = await fetch('/api/jeko/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(creds || {}),
       });
-      const data = await res.json();
-      return data;
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch {
+      // Fallback au test client direct
+    }
+
+    // 2. Test direct côté client vers Jeko Partner API (avec support CORS)
+    try {
+      const active = getStoredJekoConfig();
+      const apiKey = (creds?.apiKey || active.apiKey).trim();
+      const apiKeyId = (creds?.apiKeyId || active.apiKeyId).trim();
+      const storeId = (creds?.storeId || active.storeId).trim();
+
+      const storesRes = await fetch('https://api.jeko.africa/partner_api/stores', {
+        headers: {
+          'X-API-KEY': apiKey,
+          'X-API-KEY-ID': apiKeyId,
+        },
+      });
+
+      const storesData: any = await storesRes.json().catch(() => ({}));
+      if (!storesRes.ok) {
+        return {
+          ok: false,
+          error: storesData.message || `Authentification Jèko échouée (HTTP ${storesRes.status})`,
+        };
+      }
+
+      const list = Array.isArray(storesData) ? storesData : (storesData.data || []);
+      const matched = list.find((s: any) => s.id === storeId);
+
+      const origin = window.location.origin.startsWith('https://')
+        ? window.location.origin
+        : 'https://ais-dev-yr6sg7ssvekvsfgy45mxse-963745823961.europe-west2.run.app';
+
+      const payRes = await fetch('https://api.jeko.africa/partner_api/payment_requests', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey,
+          'X-API-KEY-ID': apiKeyId,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          storeId,
+          amountCents: 10000,
+          currency: 'XOF',
+          reference: 'TEST' + Date.now().toString().slice(-8),
+          paymentDetails: {
+            type: 'redirect',
+            data: {
+              paymentMethod: 'wave',
+              successUrl: `${origin}/?payment=success&test=true`,
+              errorUrl: `${origin}/?payment=error&test=true`,
+            },
+          },
+        }),
+      });
+
+      const payData: any = await payRes.json().catch(() => ({}));
+
+      return {
+        ok: payRes.ok && Boolean(payData.redirectUrl),
+        storesCount: list.length,
+        stores: list.map((s: any) => ({ id: s.id, name: s.name })),
+        activeStoreName: matched?.name || list[0]?.name || 'Magasin Jèko',
+        redirectUrl: payData.redirectUrl,
+        payStatus: payRes.status,
+        message: payRes.ok
+          ? 'Connexion Jèko 100% opérationnelle ! Magasin et clés validés.'
+          : payData.message || payData.errors?.[0]?.message || 'Erreur lors du test de paiement',
+      };
     } catch (err: any) {
-      return { ok: false, error: `Erreur de connexion : ${err.message}` };
+      return { ok: false, error: `Erreur réseau Jeko : ${err.message}` };
     }
   },
 
@@ -697,6 +975,7 @@ export const API = {
    * Obtenir la configuration publique Jeko (URL Webhook, Store ID)
    */
   async getJekoConfig(): Promise<{ ok: boolean; webhookUrl: string; storeId: string; apiKeyMasked: string }> {
+    const local = getStoredJekoConfig();
     try {
       const res = await fetch('/api/jeko/config');
       if (res.ok) return await res.json();
@@ -706,8 +985,8 @@ export const API = {
     return {
       ok: true,
       webhookUrl: `${window.location.origin}/api/webhooks/jeko`,
-      storeId: '895f3110-845b-4d11-a291-f28dc954c0cd',
-      apiKeyMasked: 'jeko_4e6af8...7f0f6da',
+      storeId: local.storeId,
+      apiKeyMasked: `${local.apiKey.slice(0, 10)}...${local.apiKey.slice(-6)}`,
     };
   },
 
