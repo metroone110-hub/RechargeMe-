@@ -626,7 +626,7 @@ export const API = {
     return {
       ok: true,
       webhookUrl: `${window.location.origin}/api/webhooks/jeko`,
-      storeId: 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8',
+      storeId: '895f3110-845b-4d11-a291-f28dc954c0cd',
       apiKeyMasked: 'jeko_4e6af8...7f0f6da',
     };
   },

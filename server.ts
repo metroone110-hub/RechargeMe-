@@ -31,9 +31,13 @@ const JEKO_API_KEY =
 const JEKO_API_KEY_ID =
   process.env.JEKO_API_KEY_ID || 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8';
 const JEKO_STORE_ID =
-  process.env.JEKO_STORE_ID || '6ff18bfb-e467-4896-9502-dd7db9f02c9b';
-const JEKO_WEBHOOK_SECRET =
-  process.env.JEKO_WEBHOOK_SECRET || '533e792aaaf1369cec78cdcda70d3abcce36d40fd34cfdb6df088e4323a4fe7a';
+  process.env.JEKO_STORE_ID || '895f3110-845b-4d11-a291-f28dc954c0cd';
+const JEKO_WEBHOOK_SECRETS = [
+  process.env.JEKO_WEBHOOK_SECRET,
+  '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
+  '533e792aaaf1369cec78cdcda70d3abcce36d40fd34cfdb6df088e4323a4fe7a',
+].filter(Boolean) as string[];
+const JEKO_WEBHOOK_SECRET = JEKO_WEBHOOK_SECRETS[0] || '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39';
 const JEKO_API_BASE = 'https://api.jeko.africa/partner_api';
 
 // Types & Data Structures
@@ -127,25 +131,25 @@ function verifyJekoSignature(
   signatureHeader?: string
 ): { valid: boolean; reason?: string; computed?: string } {
   if (!signatureHeader) {
-    return { valid: true, reason: 'Aucun en-tête de signature reçu (mode test toléré)' };
+    return { valid: true, reason: 'Aucun en-tête de signature reçu' };
   }
   try {
-    const cleanSecret = JEKO_WEBHOOK_SECRET.trim();
-    const hmac = crypto.createHmac('sha256', cleanSecret);
-    hmac.update(rawBody);
-    const computed = hmac.digest('hex');
     const received = signatureHeader.replace(/^sha256=/, '').trim();
-
-    const computedBuf = Buffer.from(computed, 'utf8');
     const receivedBuf = Buffer.from(received, 'utf8');
 
-    if (computedBuf.length === receivedBuf.length && crypto.timingSafeEqual(computedBuf, receivedBuf)) {
-      return { valid: true, computed };
+    for (const secret of JEKO_WEBHOOK_SECRETS) {
+      const hmac = crypto.createHmac('sha256', secret.trim());
+      hmac.update(rawBody);
+      const computed = hmac.digest('hex');
+      const computedBuf = Buffer.from(computed, 'utf8');
+
+      if (computedBuf.length === receivedBuf.length && crypto.timingSafeEqual(computedBuf, receivedBuf)) {
+        return { valid: true, computed };
+      }
     }
     return {
       valid: false,
-      reason: `Signature non correspondante (calculée: ${computed.slice(0, 10)}..., reçue: ${received.slice(0, 10)}...)`,
-      computed,
+      reason: `Signature non correspondante`,
     };
   } catch (err: any) {
     return { valid: false, reason: err.message };

@@ -201,10 +201,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Traitement en cours...</span>
+                <span>{provider === 'Solde RechargeMe' ? 'Traitement en cours...' : `Redirection vers ${provider}...`}</span>
               </>
             ) : (
-              <span>Payer {fmtCFA(total)}</span>
+              <span>{provider === 'Solde RechargeMe' ? `Payer ${fmtCFA(total)}` : `Payer via ${provider} (${fmtCFA(total)})`}</span>
             )}
           </button>
 
