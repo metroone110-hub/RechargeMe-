@@ -20,9 +20,10 @@ import { OperatorLogo } from '../data/logos';
 
 interface AgentDispatchModalProps {
   onClose: () => void;
+  onOpenSecret?: () => void;
 }
 
-export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose }) => {
+export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose, onOpenSecret }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem('rechargeme_agent_auth') === 'true';
   });
@@ -319,10 +320,23 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase">Secret Webhook</span>
                     <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11px] truncate block">
-                      533e792a...fe7a (HMAC)
+                      3bbc5d7e...2e39 (HMAC)
                     </span>
                   </div>
                 </div>
+
+                {onOpenSecret && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenSecret();
+                    }}
+                    className="w-full min-h-[46px] rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all"
+                  >
+                    <span>🔐 Ouvrir le Coin Secret (Modifier les clés API & Tester en direct)</span>
+                  </button>
+                )}
 
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 space-y-2">
                   <div className="flex items-center gap-2">

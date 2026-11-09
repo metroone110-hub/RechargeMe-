@@ -24,21 +24,48 @@ app.use(
 );
 
 /* ==========================================================================
-   CONFIG JEKO (Identifiants réels fournis par l'utilisateur)
+   CONFIG JEKO DYNAMIQUE (Gérée en direct via le Coin Secret / API)
    ========================================================================== */
-const JEKO_API_KEY =
-  process.env.JEKO_API_KEY || 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da';
-const JEKO_API_KEY_ID =
-  process.env.JEKO_API_KEY_ID || 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8';
-const JEKO_STORE_ID =
-  process.env.JEKO_STORE_ID || '895f3110-845b-4d11-a291-f28dc954c0cd';
-const JEKO_WEBHOOK_SECRETS = [
-  process.env.JEKO_WEBHOOK_SECRET,
-  '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
-  '533e792aaaf1369cec78cdcda70d3abcce36d40fd34cfdb6df088e4323a4fe7a',
-].filter(Boolean) as string[];
-const JEKO_WEBHOOK_SECRET = JEKO_WEBHOOK_SECRETS[0] || '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39';
+interface JekoRuntimeConfig {
+  apiKey: string;
+  apiKeyId: string;
+  storeId: string;
+  webhookSecret: string;
+  webhookSecrets: string[];
+}
+
+const runtimeConfig: JekoRuntimeConfig = {
+  apiKey:
+    process.env.JEKO_API_KEY || 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da',
+  apiKeyId:
+    process.env.JEKO_API_KEY_ID || 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8',
+  storeId:
+    process.env.JEKO_STORE_ID || '895f3110-845b-4d11-a291-f28dc954c0cd',
+  webhookSecret:
+    process.env.JEKO_WEBHOOK_SECRET || '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
+  webhookSecrets: [
+    '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
+    '533e792aaaf1369cec78cdcda70d3abcce36d40fd34cfdb6df088e4323a4fe7a',
+  ],
+};
+
 const JEKO_API_BASE = 'https://api.jeko.africa/partner_api';
+
+/**
+ * Résout une URL d'application publique valide requise par les validateurs Jèko (HTTPS)
+ */
+function getPublicAppUrl(req: Request): string {
+  if (process.env.APP_URL && !process.env.APP_URL.includes('localhost') && !process.env.APP_URL.includes('127.0.0.1')) {
+    return process.env.APP_URL.replace(/\/$/, '');
+  }
+  const xForwardedHost = (req.get('x-forwarded-host') || '').split(',')[0].trim();
+  const host = xForwardedHost || req.get('host') || '';
+  const proto = req.get('x-forwarded-proto') || 'https';
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return `${proto}://${host}`;
+  }
+  return 'https://ais-dev-yr6sg7ssvekvsfgy45mxse-963745823961.europe-west2.run.app';
+}
 
 // Types & Data Structures
 interface TransactionRecord {
@@ -137,7 +164,8 @@ function verifyJekoSignature(
     const received = signatureHeader.replace(/^sha256=/, '').trim();
     const receivedBuf = Buffer.from(received, 'utf8');
 
-    for (const secret of JEKO_WEBHOOK_SECRETS) {
+    const allSecrets = Array.from(new Set([runtimeConfig.webhookSecret, ...runtimeConfig.webhookSecrets].filter(Boolean)));
+    for (const secret of allSecrets) {
       const hmac = crypto.createHmac('sha256', secret.trim());
       hmac.update(rawBody);
       const computed = hmac.digest('hex');
@@ -161,21 +189,139 @@ function verifyJekoSignature(
    ========================================================================== */
 
 /**
- * Informations de configuration Jeko publiques et statut passerelle
+ * Informations de configuration Jeko complètes pour l'espace Coin Secret & public
  */
 app.get('/api/jeko/config', (req: Request, res: Response) => {
-  const host = req.get('host') || 'localhost:3000';
-  const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-  const webhookUrl = `${protocol}://${host}/api/webhooks/jeko`;
+  const appOrigin = getPublicAppUrl(req);
+  const webhookUrl = `${appOrigin}/api/webhooks/jeko`;
 
   res.json({
     ok: true,
-    storeId: JEKO_STORE_ID,
-    apiKeyMasked: `${JEKO_API_KEY.slice(0, 10)}...${JEKO_API_KEY.slice(-6)}`,
-    apiKeyIdMasked: `${JEKO_API_KEY_ID.slice(0, 8)}...${JEKO_API_KEY_ID.slice(-4)}`,
+    storeId: runtimeConfig.storeId,
+    apiKeyId: runtimeConfig.apiKeyId,
+    apiKey: runtimeConfig.apiKey,
+    webhookSecret: runtimeConfig.webhookSecret,
+    apiKeyMasked: `${runtimeConfig.apiKey.slice(0, 10)}...${runtimeConfig.apiKey.slice(-6)}`,
+    apiKeyIdMasked: `${runtimeConfig.apiKeyId.slice(0, 8)}...${runtimeConfig.apiKeyId.slice(-4)}`,
     webhookUrl,
-    hasWebhookSecret: Boolean(JEKO_WEBHOOK_SECRET),
+    appOrigin,
+    hasWebhookSecret: Boolean(runtimeConfig.webhookSecret),
   });
+});
+
+/**
+ * Mettre à jour les clés API et Store ID en direct depuis le Coin Secret
+ */
+app.post('/api/jeko/config', (req: Request, res: Response) => {
+  const { storeId, apiKey, apiKeyId, webhookSecret } = req.body;
+  if (storeId && typeof storeId === 'string' && storeId.trim()) {
+    runtimeConfig.storeId = storeId.trim();
+  }
+  if (apiKey && typeof apiKey === 'string' && apiKey.trim()) {
+    runtimeConfig.apiKey = apiKey.trim();
+  }
+  if (apiKeyId && typeof apiKeyId === 'string' && apiKeyId.trim()) {
+    runtimeConfig.apiKeyId = apiKeyId.trim();
+  }
+  if (webhookSecret && typeof webhookSecret === 'string' && webhookSecret.trim()) {
+    runtimeConfig.webhookSecret = webhookSecret.trim();
+    if (!runtimeConfig.webhookSecrets.includes(webhookSecret.trim())) {
+      runtimeConfig.webhookSecrets.unshift(webhookSecret.trim());
+    }
+  }
+
+  const appOrigin = getPublicAppUrl(req);
+  console.log(`[JEKO CONFIG UPDATED] Store: ${runtimeConfig.storeId}, KeyID: ${runtimeConfig.apiKeyId.slice(0, 8)}...`);
+
+  return res.json({
+    ok: true,
+    message: 'Identifiants Jèko mis à jour avec succès.',
+    config: {
+      storeId: runtimeConfig.storeId,
+      apiKeyId: runtimeConfig.apiKeyId,
+      apiKey: runtimeConfig.apiKey,
+      webhookSecret: runtimeConfig.webhookSecret,
+      webhookUrl: `${appOrigin}/api/webhooks/jeko`,
+    },
+  });
+});
+
+/**
+ * Tester la connexion et la validité des clés Jeko en temps réel
+ */
+app.post('/api/jeko/test-connection', async (req: Request, res: Response) => {
+  const storeId = (req.body.storeId || runtimeConfig.storeId || '').trim();
+  const apiKey = (req.body.apiKey || runtimeConfig.apiKey || '').trim();
+  const apiKeyId = (req.body.apiKeyId || runtimeConfig.apiKeyId || '').trim();
+
+  try {
+    // 1. Lister les magasins disponibles pour cette clé
+    const storesRes = await fetch(`${JEKO_API_BASE}/stores`, {
+      headers: {
+        'X-API-KEY': apiKey,
+        'X-API-KEY-ID': apiKeyId,
+      },
+    });
+
+    const storesData: any = await storesRes.json().catch(() => ({}));
+    if (!storesRes.ok) {
+      return res.status(400).json({
+        ok: false,
+        error: storesData.message || `Authentification Jeko échouée (HTTP ${storesRes.status})`,
+        details: storesData,
+      });
+    }
+
+    const storesList = Array.isArray(storesData) ? storesData : (storesData.data || []);
+    const matchingStore = storesList.find((s: any) => s.id === storeId);
+
+    // 2. Tester l'initialisation d'un vrai lien de paiement
+    const appOrigin = getPublicAppUrl(req);
+    const testRef = 'TEST' + Date.now().toString().slice(-8);
+    const payRes = await fetch(`${JEKO_API_BASE}/payment_requests`, {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'X-API-KEY-ID': apiKeyId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        storeId,
+        amountCents: 10000, // 100 F CFA
+        currency: 'XOF',
+        reference: testRef,
+        paymentDetails: {
+          type: 'redirect',
+          data: {
+            paymentMethod: 'wave',
+            successUrl: `${appOrigin}/?payment=success&test=true`,
+            errorUrl: `${appOrigin}/?payment=error&test=true`,
+          },
+        },
+      }),
+    });
+
+    const payData: any = await payRes.json().catch(() => ({}));
+    const isPaymentOk = payRes.ok && Boolean(payData.redirectUrl);
+
+    return res.json({
+      ok: isPaymentOk,
+      storesCount: storesList.length,
+      stores: storesList.map((s: any) => ({ id: s.id, name: s.name })),
+      matchingStoreFound: Boolean(matchingStore),
+      activeStoreName: matchingStore?.name || storesList[0]?.name || 'Magasin Jeko',
+      redirectUrl: payData.redirectUrl,
+      payStatus: payRes.status,
+      message: isPaymentOk
+        ? 'Connexion Jèko 100% opérationnelle ! Clés et magasin validés.'
+        : payData.message || payData.errors?.[0]?.message || 'Erreur lors du test de paiement',
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      ok: false,
+      error: `Erreur réseau : ${err.message}`,
+    });
+  }
 });
 
 /**
@@ -247,10 +393,8 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
   const ref = generateRef(orderType === 'airtime' ? 'UN' : 'FP');
   const planName = plan?.name || (orderType === 'airtime' ? `Unités ${operator} (${numAmount} F)` : 'Forfait Télécom');
 
-  const host = req.get('host') || 'localhost:3000';
-  const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-  const appOrigin = `${protocol}://${host}`;
-
+  // Toujours utiliser une URL HTTPS publique valide requise par Jeko
+  const appOrigin = getPublicAppUrl(req);
   const successUrl = `${appOrigin}/?payment=success&reference=${ref}&order=${ref}&dest=${cleanDest}`;
   const errorUrl = `${appOrigin}/?payment=error&reference=${ref}&order=${ref}`;
 
@@ -275,7 +419,7 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
 
   // 2. Appel à l'API Jeko
   const jekoPayload = {
-    storeId: JEKO_STORE_ID,
+    storeId: runtimeConfig.storeId,
     amountCents: numAmount * 100, // En centimes XOF
     currency: 'XOF',
     reference: ref,
@@ -289,14 +433,14 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
     },
   };
 
-  console.log(`[JEKO API REQUEST] Calling ${JEKO_API_BASE}/payment_requests for ref ${ref}...`);
+  console.log(`[JEKO API REQUEST] Store ${runtimeConfig.storeId}, ref ${ref}, appOrigin: ${appOrigin}`);
 
   try {
     const jekoRes = await fetch(`${JEKO_API_BASE}/payment_requests`, {
       method: 'POST',
       headers: {
-        'X-API-KEY': JEKO_API_KEY,
-        'X-API-KEY-ID': JEKO_API_KEY_ID,
+        'X-API-KEY': runtimeConfig.apiKey,
+        'X-API-KEY-ID': runtimeConfig.apiKeyId,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(jekoPayload),
@@ -321,9 +465,15 @@ app.post('/api/jeko/create-payment', async (req: Request, res: Response) => {
     }
 
     console.error(`[JEKO API ERROR] Non-200 from Jeko:`, jekoData);
+    const errMessage =
+      jekoData.errors?.map((e: any) => e.message).join(', ') ||
+      jekoData.message ||
+      'Erreur lors de la création du paiement Jeko.';
+
     return res.status(jekoRes.status || 400).json({
       ok: false,
-      error: jekoData.message || 'Erreur lors de la création du paiement Jeko.',
+      error: errMessage,
+      details: jekoData,
     });
   } catch (err: any) {
     console.error(`[JEKO API ERROR] Connection failure:`, err.message);
@@ -351,8 +501,8 @@ app.get('/api/jeko/payment-status/:ref', async (req: Request, res: Response) => 
     try {
       const checkRes = await fetch(`${JEKO_API_BASE}/payment_requests/${order.jekoId}`, {
         headers: {
-          'X-API-KEY': JEKO_API_KEY,
-          'X-API-KEY-ID': JEKO_API_KEY_ID,
+          'X-API-KEY': runtimeConfig.apiKey,
+          'X-API-KEY-ID': runtimeConfig.apiKeyId,
         },
       });
       if (checkRes.ok) {

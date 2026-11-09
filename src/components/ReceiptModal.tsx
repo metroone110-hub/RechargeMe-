@@ -70,24 +70,27 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {title}
         </h3>
         <p className="text-xs text-center text-slate-500 dark:text-zinc-400 mb-5">
-          Opération validée · Commande en cours de livraison
+          {redirectUrl
+            ? 'Demande de paiement prête · Cliquez ci-dessous pour régler'
+            : 'Opération validée · Commande en cours de livraison'}
         </p>
 
         {/* Jeko Direct Payment Link if present */}
         {redirectUrl && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-center">
-            <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 block mb-2">
-              Lien de paiement sécurisé Jeko généré
+          <div className="mb-5 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border-2 border-indigo-500/60 text-center shadow-lg shadow-indigo-500/10 animate-pulse">
+            <span className="text-xs font-black uppercase tracking-wider text-indigo-950 dark:text-indigo-200 block mb-2">
+              Lien de paiement Jeko généré avec succès
             </span>
             <a
               href={redirectUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-md shadow-indigo-600/30 active:scale-95 transition-all w-full"
+              className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-lg shadow-indigo-600/40 active:scale-95 transition-all w-full"
             >
-              <span>Accéder au paiement Jeko</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Payer maintenant sur Jèko</span>
+              <ExternalLink className="w-4 h-4" />
             </a>
+            <span className="text-[11px] text-slate-500 dark:text-zinc-400 block mt-2">
+              (Wave, Orange Money, MTN MoMo, Moov Money)
+            </span>
           </div>
         )}
 

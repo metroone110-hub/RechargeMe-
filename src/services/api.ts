@@ -614,6 +614,86 @@ export const API = {
   },
 
   /**
+   * Obtenir la configuration complète Jeko pour le Coin Secret
+   */
+  async getFullJekoConfig(): Promise<{
+    ok: boolean;
+    storeId: string;
+    apiKeyId: string;
+    apiKey: string;
+    webhookSecret: string;
+    webhookUrl: string;
+    appOrigin?: string;
+  }> {
+    try {
+      const res = await fetch('/api/jeko/config');
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
+    return {
+      ok: true,
+      storeId: '895f3110-845b-4d11-a291-f28dc954c0cd',
+      apiKeyId: 'd4365c1e-b68a-46c4-a0fb-49d92c4c43c8',
+      apiKey: 'jeko_4e6af80c6279a8112d7813a11e4863b1b9dbabc26fbaaedb106be041c7f0f6da',
+      webhookSecret: '3bbc5d7eed0471952a283d51fd30f479e4916426ac9a22b7f120ef5b97342e39',
+      webhookUrl: `${window.location.origin}/api/webhooks/jeko`,
+    };
+  },
+
+  /**
+   * Sauvegarder et appliquer de nouvelles clés Jeko en temps réel
+   */
+  async updateJekoConfig(config: {
+    storeId: string;
+    apiKeyId: string;
+    apiKey: string;
+    webhookSecret: string;
+  }): Promise<{ ok: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch('/api/jeko/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      const data = await res.json();
+      return data;
+    } catch (err: any) {
+      return { ok: false, error: err.message };
+    }
+  },
+
+  /**
+   * Tester la validité des clés et la création de paiement en temps réel
+   */
+  async testJekoConnection(creds?: {
+    storeId?: string;
+    apiKeyId?: string;
+    apiKey?: string;
+  }): Promise<{
+    ok: boolean;
+    message?: string;
+    error?: string;
+    storesCount?: number;
+    stores?: Array<{ id: string; name: string }>;
+    activeStoreName?: string;
+    redirectUrl?: string;
+    payStatus?: number;
+  }> {
+    try {
+      const res = await fetch('/api/jeko/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(creds || {}),
+      });
+      const data = await res.json();
+      return data;
+    } catch (err: any) {
+      return { ok: false, error: `Erreur de connexion : ${err.message}` };
+    }
+  },
+
+  /**
    * Obtenir la configuration publique Jeko (URL Webhook, Store ID)
    */
   async getJekoConfig(): Promise<{ ok: boolean; webhookUrl: string; storeId: string; apiKeyMasked: string }> {
