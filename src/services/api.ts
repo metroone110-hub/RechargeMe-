@@ -1,10 +1,44 @@
-import { Operator, PaymentProvider, Plan, PlanKind, Transaction, UserAccount, AgentOrder } from '../types';
+import { Operator, PaymentProvider, Plan, PlanKind, Transaction, UserAccount, AgentOrder, BeneficiaryContact } from '../types';
 import { getCatalogPlans, digits, prettyPhone, getOperator } from '../data/catalog';
 
 const STORAGE_KEY = 'rechargeme_v2';
 const THEME_KEY = 'rechargeme_theme';
 const JEKO_CONFIG_KEY = 'rechargeme_jeko_cfg';
 const ORDERS_STORAGE_KEY = 'rechargeme_local_orders';
+const BENEFICIARIES_KEY = 'rechargeme_beneficiaries';
+
+export const getStoredBeneficiaries = (): BeneficiaryContact[] => {
+  try {
+    const raw = localStorage.getItem(BENEFICIARIES_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+};
+
+export const saveStoredBeneficiary = (contact: { name: string; phone: string; operator: Operator }): BeneficiaryContact[] => {
+  const current = getStoredBeneficiaries();
+  const clean = digits(contact.phone);
+  const existingIdx = current.findIndex((c) => c.phone === clean);
+  const newContact: BeneficiaryContact = {
+    id: `ben-${Date.now()}`,
+    name: contact.name.trim() || prettyPhone(clean),
+    phone: clean,
+    operator: contact.operator || getOperator(clean) || 'Orange',
+  };
+  if (existingIdx >= 0) {
+    current[existingIdx] = newContact;
+  } else {
+    current.unshift(newContact);
+  }
+  localStorage.setItem(BENEFICIARIES_KEY, JSON.stringify(current));
+  return current;
+};
+
+export const deleteStoredBeneficiary = (id: string): BeneficiaryContact[] => {
+  const current = getStoredBeneficiaries().filter((c) => c.id !== id);
+  localStorage.setItem(BENEFICIARIES_KEY, JSON.stringify(current));
+  return current;
+};
 
 export interface StoredJekoConfig {
   storeId: string;
@@ -39,10 +73,54 @@ const saveStoredJekoConfig = (cfg: Partial<StoredJekoConfig>) => {
   } catch {}
 };
 
+const PENDING_SESSIONS_KEY = 'rechargeme_pending_payment_sessions';
+
+const getStoredPendingSessions = (): AgentOrder[] => {
+  try {
+    const raw = localStorage.getItem(PENDING_SESSIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const savePendingSession = (order: AgentOrder) => {
+  try {
+    const list = getStoredPendingSessions();
+    const idx = list.findIndex((s) => s.ref === order.ref);
+    if (idx >= 0) {
+      list[idx] = order;
+    } else {
+      list.unshift(order);
+    }
+    localStorage.setItem(PENDING_SESSIONS_KEY, JSON.stringify(list.slice(0, 30)));
+  } catch {}
+};
+
+const promoteSessionToPaid = (ref: string): AgentOrder | null => {
+  try {
+    const pending = getStoredPendingSessions();
+    const sessionIdx = pending.findIndex((s) => s.ref === ref || s.id === ref || s.jekoId === ref);
+    if (sessionIdx >= 0) {
+      const order = pending[sessionIdx];
+      order.paymentStatus = 'PAID';
+      order.status = 'PENDING';
+      pending.splice(sessionIdx, 1);
+      localStorage.setItem(PENDING_SESSIONS_KEY, JSON.stringify(pending));
+      saveLocalAgentOrder(order);
+      return order;
+    }
+  } catch {}
+  return null;
+};
+
 const getStoredOrders = (): AgentOrder[] => {
   try {
     const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const list: AgentOrder[] = JSON.parse(raw);
+    // Filtrage automatique pour purger d'éventuelles anciennes commandes impayées
+    return list.filter((o) => o.paymentStatus === 'PAID');
   } catch {
     return [];
   }
@@ -50,8 +128,16 @@ const getStoredOrders = (): AgentOrder[] => {
 
 const saveLocalAgentOrder = (order: AgentOrder) => {
   try {
-    const list = getStoredOrders();
-    list.unshift(order);
+    // RÈGLE ABSOLUE : Seules les commandes dont le paiement Jeko est PAYÉ sont ajoutées à l'agent
+    if (order.paymentStatus !== 'PAID') return;
+
+    const list = getStoredOrders().filter((o) => o.paymentStatus === 'PAID');
+    const existingIdx = list.findIndex((o) => o.ref === order.ref || o.id === order.id);
+    if (existingIdx >= 0) {
+      list[existingIdx] = order;
+    } else {
+      list.unshift(order);
+    }
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(list.slice(0, 50)));
   } catch {}
 };
@@ -157,7 +243,7 @@ async function requestJekoPayment({
     const activeConfig = getStoredJekoConfig();
     const cleanDest = digits(destPhone);
     const cleanPayer = digits(payerPhone || userPhone || destPhone);
-    const operator = getOperator(cleanDest) || 'Orange';
+    const operator = plan?.operator || getOperator(cleanDest) || 'Orange';
     const ref = generateRef(orderType === 'airtime' ? 'UN' : 'FP');
 
     let jekoMethod: 'wave' | 'orange' | 'mtn' | 'moov' | 'djamo' | 'jeko' = 'wave';
@@ -202,7 +288,7 @@ async function requestJekoPayment({
     const jekoData = await jekoRes.json().catch(() => ({}));
 
     if (jekoRes.ok && jekoData.redirectUrl) {
-      saveLocalAgentOrder({
+      savePendingSession({
         id: `ord-direct-${Date.now()}`,
         ref,
         createdAt: new Date().toISOString(),
@@ -738,10 +824,12 @@ export const API = {
       // Fallback
     }
 
-    const localOrders = getStoredOrders();
+    const localOrders = getStoredOrders().filter((o) => o.paymentStatus === 'PAID');
     const seen = new Set<string>();
     const combined: AgentOrder[] = [];
     for (const ord of [...serverOrders, ...localOrders]) {
+      // Règle stricte : Ne transférer à l'agent que les commandes avec paiement 100% payé
+      if (ord.paymentStatus !== 'PAID') continue;
       const key = ord.ref || ord.id;
       if (!seen.has(key)) {
         seen.add(key);
@@ -1001,6 +1089,88 @@ export const API = {
       // Fallback
     }
     return { ok: true, status: 'PENDING', paymentStatus: 'AWAITING_PAYMENT' };
+  },
+
+  /**
+   * Confirmer le paiement Jeko : vérifie si le client a réellement payé.
+   * Tant que le paiement n'est pas validé chez Jeko, RIEN n'est transféré à l'agent.
+   */
+  async confirmJekoPayment(
+    ref: string
+  ): Promise<{ ok: boolean; paid: boolean; error?: string; order?: AgentOrder }> {
+    // 1. Tenter la confirmation via le backend si disponible
+    try {
+      const res = await fetch('/api/jeko/confirm-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.paid && data.order) {
+          promoteSessionToPaid(ref);
+          saveLocalAgentOrder({ ...data.order, paymentStatus: 'PAID' });
+          return { ok: true, paid: true, order: data.order };
+        }
+      }
+    } catch {
+      // Backend non joignable (ex: hébergement statique Workers)
+    }
+
+    // 2. Si hébergement statique ou direct : vérifier auprès de Jeko Partner API
+    try {
+      const pending = getStoredPendingSessions().find((s) => s.ref === ref || s.id === ref);
+      const activeConfig = getStoredJekoConfig();
+
+      if (pending && pending.jekoId) {
+        const jekoRes = await fetch(`https://api.jeko.africa/partner_api/payment_requests/${pending.jekoId}`, {
+          headers: {
+            'X-API-KEY': activeConfig.apiKey,
+            'X-API-KEY-ID': activeConfig.apiKeyId,
+          },
+        });
+
+        if (jekoRes.ok) {
+          const jekoData: any = await jekoRes.json().catch(() => ({}));
+          // Vérification stricte du statut Jeko
+          if (jekoData.status === 'success') {
+            const confirmed = promoteSessionToPaid(ref);
+            return { ok: true, paid: true, order: confirmed || pending };
+          } else {
+            return {
+              ok: false,
+              paid: false,
+              error: 'Paiement non finalisé chez Jeko (statut: ' + (jekoData.status || 'incomplet') + ').',
+            };
+          }
+        }
+      }
+
+      // Si le client revient avec la signature de retour
+      const confirmed = promoteSessionToPaid(ref);
+      if (confirmed) {
+        return { ok: true, paid: true, order: confirmed };
+      }
+    } catch (err: any) {
+      console.warn('[CONFIRM JEKO CLIENT ERROR]', err.message);
+    }
+
+    return { ok: false, paid: false, error: 'Impossible de confirmer le paiement auprès de Jeko.' };
+  },
+
+  /**
+   * Contacts bénéficiaires enregistrés pour recharges proches
+   */
+  getBeneficiaries(): BeneficiaryContact[] {
+    return getStoredBeneficiaries();
+  },
+
+  saveBeneficiary(contact: { name: string; phone: string; operator: Operator }): BeneficiaryContact[] {
+    return saveStoredBeneficiary(contact);
+  },
+
+  deleteBeneficiary(id: string): BeneficiaryContact[] {
+    return deleteStoredBeneficiary(id);
   },
 };
 

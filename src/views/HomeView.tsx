@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Eye, EyeOff, Plus, ShoppingBag, Send, ArrowUpRight, ArrowDownLeft, Wifi, PhoneCall, ChevronRight } from 'lucide-react';
-import { UserAccount, Transaction, Plan } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Eye, EyeOff, Plus, ShoppingBag, Send, ArrowUpRight, ArrowDownLeft, Wifi, PhoneCall, ChevronRight, Users } from 'lucide-react';
+import { UserAccount, Transaction, Plan, Operator } from '../types';
 import { fmtCFA, getOperator, prettyPhone, getCatalogPlans } from '../data/catalog';
 import { OperatorLogo } from '../data/logos';
 
@@ -20,6 +20,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onToggleHideBalance,
 }) => {
   const op = getOperator(user.phone) || 'Orange';
+  const [selectedOp, setSelectedOp] = useState<Operator>(op);
 
   // Compute 7 days chart data
   const { chartDays, totalWeekSpent, maxDaily } = useMemo(() => {
@@ -46,10 +47,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return { chartDays: days, totalWeekSpent: total, maxDaily: max };
   }, [user.tx]);
 
-  // Recommended plans for user's network
+  // Recommended plans for selected operator (MTN, Orange, Moov)
   const recommendedPlans = useMemo(() => {
-    const internet = getCatalogPlans(op, 'internet');
-    const appels = getCatalogPlans(op, 'appels');
+    const internet = getCatalogPlans(selectedOp, 'internet');
+    const appels = getCatalogPlans(selectedOp, 'appels');
 
     // Pick top attractive plans: around 500, 1000, 1500, 2500, 5000 FCFA
     const targetPrices = [500, 1000, 1500, 2500, 5000];
@@ -67,7 +68,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     }
 
     return picked.slice(0, 5);
-  }, [op]);
+  }, [selectedOp]);
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-300">
@@ -145,22 +146,64 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
+      {/* Quick Friend Recharge Banner */}
+      <div
+        onClick={() => onNavigate('acheter')}
+        className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-amber-500/10 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-amber-950/30 p-4 rounded-3xl border border-indigo-200/60 dark:border-indigo-900/40 flex items-center justify-between gap-3 hover:border-indigo-400 dark:hover:border-indigo-700 transition-all shadow-xs"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+              Recharger pour un proche
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
+              Unités ou forfaits sur Orange, MTN & Moov
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <OperatorLogo operator="Orange" size={20} className="rounded-md" />
+          <OperatorLogo operator="MTN" size={20} className="rounded-md" />
+          <OperatorLogo operator="Moov" size={20} className="rounded-md" />
+          <ChevronRight className="w-4 h-4 text-slate-400 ml-1" />
+        </div>
+      </div>
+
       {/* Recommended Passes Carousel */}
       {recommendedPlans.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <OperatorLogo operator={op} size={22} className="rounded-md" />
+              <OperatorLogo operator={selectedOp} size={22} className="rounded-md" />
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Offres recommandées {op}
+                Forfaits recommandés {selectedOp}
               </h2>
             </div>
-            <button
-              onClick={() => onNavigate('acheter')}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Tous les forfaits
-            </button>
+
+            {/* Operator switch tabs */}
+            <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-zinc-800 p-1 rounded-2xl self-start sm:self-auto">
+              {(['MTN', 'Orange', 'Moov'] as Operator[]).map((opr) => {
+                const isSelected = selectedOp === opr;
+                return (
+                  <button
+                    key={opr}
+                    type="button"
+                    onClick={() => setSelectedOp(opr)}
+                    className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all ${
+                      isSelected
+                        ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <OperatorLogo operator={opr} size={15} className="rounded-xs" />
+                    <span>{opr}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 scroll-snap-x">

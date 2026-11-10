@@ -4,6 +4,13 @@ export type PaymentProvider = 'Solde RechargeMe' | 'Wave' | 'MTN Money' | 'Orang
 
 export type PlanKind = 'internet' | 'appels';
 
+export interface BeneficiaryContact {
+  id: string;
+  name: string;
+  phone: string;
+  operator: Operator;
+}
+
 export interface Plan {
   id: string;
   name: string;

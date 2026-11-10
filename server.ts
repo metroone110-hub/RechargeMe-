@@ -529,6 +529,53 @@ app.get('/api/jeko/payment-status/:ref', async (req: Request, res: Response) => 
 });
 
 /**
+ * Confirmer explicitement un paiement Jeko après retour du client
+ */
+app.post('/api/jeko/confirm-payment', async (req: Request, res: Response) => {
+  const { ref, jekoId } = req.body;
+  const order = ordersDb.find((o) => o.ref === ref || o.id === ref || (jekoId && o.jekoId === jekoId));
+
+  if (!order) {
+    return res.status(404).json({ ok: false, error: 'Commande non trouvée' });
+  }
+
+  const targetJekoId = jekoId || order.jekoId;
+  if (targetJekoId) {
+    try {
+      const checkRes = await fetch(`${JEKO_API_BASE}/payment_requests/${targetJekoId}`, {
+        headers: {
+          'X-API-KEY': runtimeConfig.apiKey,
+          'X-API-KEY-ID': runtimeConfig.apiKeyId,
+        },
+      });
+      if (checkRes.ok) {
+        const jekoDetails: any = await checkRes.json();
+        if (jekoDetails.status === 'success') {
+          order.paymentStatus = 'PAID';
+          console.log(`[PAYMENT CONFIRMED] Commande ${order.ref} confirmée payée via Jeko.`);
+          return res.json({ ok: true, paid: true, order });
+        } else {
+          return res.json({
+            ok: false,
+            paid: false,
+            status: jekoDetails.status,
+            error: 'Le paiement n’a pas encore été finalisé sur votre application de paiement mobile.',
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[CONFIRM PAYMENT FETCH ERROR]', err.message);
+    }
+  }
+
+  if (order.paymentStatus === 'PAID') {
+    return res.json({ ok: true, paid: true, order });
+  }
+
+  return res.json({ ok: false, paid: false, error: 'Paiement non confirmé par Jeko.' });
+});
+
+/**
  * Achat d'unités de communication (Airtime) via Solde RechargeMe
  */
 app.post('/api/airtime/buy', (req: Request, res: Response) => {
@@ -783,12 +830,14 @@ app.post('/api/admin/auth', (req: Request, res: Response) => {
  * Liste des commandes en attente pour l'agent
  */
 app.get('/api/admin/orders', (_req: Request, res: Response) => {
-  const pendingCount = ordersDb.filter((o) => o.status === 'PENDING').length;
-  const totalVolume = ordersDb.reduce((sum, o) => sum + o.amount, 0);
+  // Règle stricte : Ne renvoyer à l'agent QUE les commandes dont le paiement Jeko est validé et payé
+  const paidOrders = ordersDb.filter((o) => o.paymentStatus === 'PAID');
+  const pendingCount = paidOrders.filter((o) => o.status === 'PENDING').length;
+  const totalVolume = paidOrders.reduce((sum, o) => sum + o.amount, 0);
 
   res.json({
     ok: true,
-    orders: ordersDb,
+    orders: paidOrders,
     pendingCount,
     totalVolume,
     timestamp: new Date().toISOString(),

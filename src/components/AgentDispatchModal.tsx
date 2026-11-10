@@ -79,7 +79,7 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
     fetchOrders();
   };
 
-  const pendingOrders = orders.filter((o) => o.status === 'PENDING');
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING' && o.paymentStatus === 'PAID');
   const deliveredOrders = orders.filter((o) => o.status === 'DELIVERED');
 
   return (
@@ -228,9 +228,9 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
             {/* Orders Feed */}
             <div className="space-y-3">
               {(tab === 'pending' ? pendingOrders : deliveredOrders).length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-400 bg-slate-50 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800">
+                <div className="py-12 text-center text-xs text-slate-400 bg-slate-50 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 px-4">
                   {tab === 'pending'
-                    ? 'Aucune commande en attente ! Toutes les demandes clients ont été traitées.'
+                    ? 'Aucune commande payée en attente. Seules les commandes dont le paiement Jeko est 100% payé et validé s’affichent ici.'
                     : 'Aucune commande archivée pour le moment.'}
                 </div>
               ) : (
@@ -288,8 +288,9 @@ export const AgentDispatchModal: React.FC<AgentDispatchModalProps> = ({ onClose 
                           <span className="font-black text-lg text-slate-900 dark:text-white num-tabular block">
                             {fmtCFA(order.amount)}
                           </span>
-                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                            Payé via {order.payWith}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md mt-0.5">
+                            <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />
+                            Payé · {order.payWith}
                           </span>
                         </div>
                       </div>

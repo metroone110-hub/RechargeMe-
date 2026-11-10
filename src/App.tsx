@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserAccount, Plan, Transaction, PaymentProvider } from './types';
+import { UserAccount, Plan, Transaction, PaymentProvider, Operator } from './types';
 import { API } from './services/api';
 import { Header } from './components/Header';
 import { BottomNav, NavTab } from './components/BottomNav';
@@ -56,16 +56,24 @@ export default function App() {
     const dest = urlParams.get('dest');
 
     if (paymentStatus === 'success' && ref) {
-      showToast('Paiement Jeko validé ! Activation en cours...');
-      setReceiptData({
-        isOpen: true,
-        title: 'Paiement Jeko validé avec succès',
-        rows: [
-          { label: 'Statut du paiement', value: 'Confirmé via Jeko Pay' },
-          ...(dest ? [{ label: 'Numéro bénéficiaire', value: prettyPhone(dest) }] : []),
-          { label: 'Date', value: new Date().toLocaleDateString('fr-FR') },
-        ],
-        refCode: ref,
+      // Vérification réelle : Le paiement a-t-il été finalisé auprès de Jeko ?
+      API.confirmJekoPayment(ref).then((res) => {
+        if (res.paid) {
+          showToast('Paiement Jeko validé ! Commande transmise à l’agent.');
+          setReceiptData({
+            isOpen: true,
+            title: 'Paiement Jeko validé avec succès',
+            rows: [
+              { label: 'Statut du paiement', value: 'Payé & Confirmé via Jeko Pay' },
+              ...(dest ? [{ label: 'Numéro bénéficiaire', value: prettyPhone(dest) }] : []),
+              { label: 'Date', value: new Date().toLocaleDateString('fr-FR') },
+            ],
+            refCode: ref,
+          });
+          refreshUser();
+        } else {
+          showToast(res.error || 'Paiement non finalisé chez Jeko. Aucune commande transmise.');
+        }
       });
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (paymentStatus === 'error') {
@@ -119,16 +127,20 @@ export default function App() {
     type: 'airtime' | 'internet' | 'appels',
     phone: string,
     amount: number,
-    plan: Plan | null
+    plan: Plan | null,
+    operatorOverride?: Operator
   ) => {
     if (!user) return;
-    const op = getOperator(phone) || 'Orange';
+    const op = operatorOverride || (plan ? plan.operator : getOperator(phone)) || 'Orange';
+    const isSelf = phone === user.phone;
     const prodName = type === 'airtime' ? `Unités ${op}` : plan ? plan.name : `Forfait ${op}`;
 
     const summaryRows: ReceiptRow[] = [
+      { label: 'Bénéficiaire', value: isSelf ? 'Mon numéro' : 'Recharge Proche' },
+      { label: 'Réseau / Opérateur', value: op },
       { label: 'Produit', value: prodName },
       ...(plan ? [{ label: 'Validité', value: plan.valid }] : []),
-      { label: 'Numéro destinataire', value: `${prettyPhone(phone)} (${op})` },
+      { label: 'Numéro destinataire', value: `${prettyPhone(phone)}` },
       { label: 'Montant total', value: fmtCFA(amount) },
     ];
 
